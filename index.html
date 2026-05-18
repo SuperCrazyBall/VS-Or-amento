@@ -1536,20 +1536,28 @@ tbody tr.row-p { background: #FFF0A0 !important; }
         <!-- Painel relatório rápido -->
         <div class="p-rel" id="p-relatorio">
           <div class="vs-panel">
-            <div class="vs-panel-hd">📊 Gerar Relatório Personalizado</div>
+            <div class="vs-panel-hd">📊 Relatório Personalizado do Orçamento</div>
             <div class="rel-opts">
-              <label class="rel-opt"><input type="checkbox" id="rc-all" onchange="togAllRel(this)"> Todos</label>
-              <label class="rel-opt"><input type="checkbox" id="rc-sent"> ● Enviados</label>
-              <label class="rel-opt"><input type="checkbox" id="rc-partial"> ● Parcial</label>
-              <label class="rel-opt"><input type="checkbox" id="rc-cut"> ● Cortados</label>
-              <label class="rel-opt"><input type="checkbox" id="rc-pending"> ● Pendentes</label>
+              <label class="rel-opt"><input type="checkbox" id="rc-all" onchange="togAllRel(this)"> ✔ Todos</label>
+              <label class="rel-opt"><input type="checkbox" id="rc-sent" checked> 🟢 Enviados</label>
+              <label class="rel-opt"><input type="checkbox" id="rc-partial"> 🟡 Parciais</label>
+              <label class="rel-opt"><input type="checkbox" id="rc-cut"> 🔴 Cortados</label>
+              <label class="rel-opt"><input type="checkbox" id="rc-pending"> ⬜ Pendentes</label>
+            </div>
+            <div style="padding:4px 5px;background:#FFF8E0;border-top:1px solid #C09000;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:10px;font-weight:bold">
+              <span style="color:#553300">Mostrar no relatório:</span>
+              <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="ro-pct" checked> % por status</label>
+              <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="ro-val" checked> Valores R$</label>
+              <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="ro-sum" checked> Resumo geral</label>
+              <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="ro-hist"> Histórico do produto</label>
             </div>
             <div class="rel-acts">
-              <button class="vbtn prim" onclick="genRel('excel')">📥 Excel</button>
-              <button class="vbtn" onclick="genRel('pdf')">🖨 Imprimir</button>
+              <button class="vbtn prim" onclick="genRel('pdf')">🖨 Imprimir/PDF</button>
+              <button class="vbtn" onclick="genRel('excel')">📥 Excel</button>
               <button class="vbtn" onclick="document.getElementById('p-relatorio').style.display='none'">✕ Fechar</button>
             </div>
           </div>
+          <div id="rel-preview" style="margin-top:4px"></div>
         </div>
 
         <!-- Painel cortes -->
@@ -1660,10 +1668,35 @@ tbody tr.row-p { background: #FFF0A0 !important; }
   <div class="mwin wide">
     <div class="mhd"><span id="mhv-title">Orçamento</span><button class="mclose" onclick="closeM('m-hview')">✕</button></div>
     <div class="mbody"><div id="mhv-body"></div></div>
-    <div class="mfoot">
+    <div class="mfoot" style="flex-wrap:wrap;gap:4px">
       <button class="vbtn" onclick="loadFromHist()">📋 Carregar para edição</button>
+      <button class="vbtn prim" onclick="printHistOrc()">🖨 Imprimir</button>
+      <button class="vbtn" onclick="excelHistOrc()">📥 Excel</button>
+      <button class="vbtn" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF" onclick="closeM('m-hview');openM('m-prodhist')">🔍 Histórico de Produto</button>
       <button class="vbtn danger sm" onclick="delHistItem()">🗑 Excluir</button>
       <button class="vbtn" onclick="closeM('m-hview')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="mov" id="m-prodhist">
+  <div class="mwin wide">
+    <div class="mhd">
+      <span>🔍 Histórico do Produto</span>
+      <button class="mclose" onclick="closeM('m-prodhist')">✕</button>
+    </div>
+    <div class="mbody">
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        <input id="ph-cod" class="vi" placeholder="Código do produto..." style="min-width:140px" onkeydown="if(event.key==='Enter')searchProdHist()">
+        <input id="ph-nom" class="vi" placeholder="Nome (parcial)..." style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter')searchProdHist()">
+        <button class="vbtn prim" onclick="searchProdHist()">🔍 Buscar</button>
+      </div>
+      <div id="ph-result"></div>
+    </div>
+    <div class="mfoot">
+      <button class="vbtn prim" onclick="printProdHist()">🖨 Imprimir</button>
+      <button class="vbtn" onclick="excelProdHist()">📥 Excel</button>
+      <button class="vbtn" onclick="closeM('m-prodhist')">Fechar</button>
     </div>
   </div>
 </div>
@@ -2191,10 +2224,15 @@ function getRelRows(){
 }
 function genRel(fmt){
   var rows=getRelRows(); if(!rows) return;
-  var parts=[]; var M={'rc-all':'Todos','rc-sent':'Enviados','rc-partial':'Parciais','rc-cut':'Cortados','rc-pending':'Pendentes'};
-  Object.keys(M).forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)parts.push(M[id]);});
+  var parts=[]; var M={'rc-sent':'Enviados','rc-partial':'Parciais','rc-cut':'Cortados','rc-pending':'Pendentes'};
+  ['rc-sent','rc-partial','rc-cut','rc-pending'].forEach(function(id){var el=document.getElementById(id);if(el&&el.checked)parts.push(M[id]);});
   var t='RELATÓRIO ['+parts.join('+')+'] — '+orderInfo.filial;
-  if(fmt==='excel')expCustExcel(rows,t); else printRows(rows,t);
+  var showPct=document.getElementById('ro-pct')&&document.getElementById('ro-pct').checked;
+  var showVal=document.getElementById('ro-val')&&document.getElementById('ro-val').checked;
+  var showSum=document.getElementById('ro-sum')&&document.getElementById('ro-sum').checked;
+  var showHist=document.getElementById('ro-hist')&&document.getElementById('ro-hist').checked;
+  if(fmt==='excel') expCustExcel(rows, t, showPct, showVal, showSum);
+  else printRows(rows, t, showPct, showVal, showSum, showHist);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2259,6 +2297,7 @@ function renderHist(){
     html+='</div>';
     html+='<div class="hact" onclick="event.stopPropagation()">';
     html+='<button class="vbtn sm" onclick="loadDirect(\''+h.id+'\')">📋 Carregar</button>';
+    html+='<button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF" onclick="openProdHistFromCard(\''+h.id+'\')">🔍 Produto</button>';
     html+='<button class="vbtn sm danger" onclick="delDirect(\''+h.id+'\')">🗑</button>';
     html+='</div></div>';
   });}
@@ -2272,9 +2311,35 @@ function viewHist(id){
   var prods=h.products||[];
   var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
   var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#888'};
-  var html='<div style="margin-bottom:8px;font-size:11px"><b>'+gLbl+':</b> '+h.gestor+' | <b>Data:</b> '+h.data+' | <b>Total:</b> '+h.total+'</div>';
-  html+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#CC6600;color:#FFF"><th style="padding:3px 5px;text-align:left">Código</th><th style="padding:3px 5px;text-align:left">Produto</th><th>Un.</th><th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th><th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th><th>Situação</th></tr></thead><tbody>';
-  prods.forEach(function(p,i){var bg=i%2===0?'#FFFEF5':'#F5EDD8';html+='<tr style="background:'+bg+'"><td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px">'+p.codigo+'</td><td style="padding:3px 5px">'+p.nome+'</td><td style="padding:3px 5px;text-align:center">'+p.unidade+'</td><td style="padding:3px 5px;text-align:right">'+p.qtdSolicitada+'</td><td style="padding:3px 5px;text-align:right">'+p.qtdEnviada+'</td><td style="padding:3px 5px;text-align:right">'+(p.vlUnit?'R$ '+p.vlUnit:'—')+'</td><td style="padding:3px 5px;text-align:right">'+(p.vlTotal?'R$ '+p.vlTotal:'—')+'</td><td style="padding:3px 5px;color:'+CLR[p.status]+';font-weight:bold">'+LBL[p.status]+'</td></tr>';});
+  var s=calcRelStats(prods);
+  var html='<div style="margin-bottom:6px;font-size:11px"><b>'+gLbl+':</b> '+h.gestor+' | <b>Data:</b> '+h.data+' | <b>Total Orçado:</b> <span style="color:#AA5500;font-weight:bold">'+fmtMoney(s.vlTot)+'</span></div>';
+  html+=buildSummaryHTML(s,true,true);
+  html+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html+='<th style="padding:3px 5px;text-align:left">Código</th><th style="padding:3px 5px;text-align:left">Produto</th><th>Un.</th>';
+  html+='<th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
+  html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
+  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns"></th>';
+  html+='</tr></thead><tbody>';
+  prods.forEach(function(p,i){
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var pct=p.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
+            p.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
+            p.status==='partial'?(p.qtdSolicitada?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%</span>':'—'):'—';
+    html+='<tr style="background:'+bg+'">';
+    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px">'+p.codigo+'</td>';
+    html+='<td style="padding:3px 5px">'+p.nome+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+p.unidade+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+p.qtdSolicitada+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+p.qtdEnviada+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New">'+(vu>0?fmtMoney(vu):'—')+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
+    html+='<td style="padding:3px 5px;color:'+CLR[p.status]+';font-weight:bold">'+LBL[p.status]+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
+    html+='<td style="padding:2px 3px"><button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF;font-size:9px" onclick="quickProdHist(\''+p.codigo.replace(/'/g,"\\'")+'\')" title="Ver histórico deste produto">🔍</button></td>';
+    html+='</tr>';
+  });
   html+='</tbody></table>';
   document.getElementById('mhv-body').innerHTML=html;
   openM('m-hview');
@@ -2304,16 +2369,79 @@ function buildAna(){
 }
 
 function secCortes(hist){
-  var tot=0,cut=0,par=0,snt=0,vlT=0,vlC=0;
-  hist.forEach(function(h){(h.products||[]).forEach(function(p){tot++;if(p.status==='cut')cut++;else if(p.status==='partial')par++;else if(p.status==='sent')snt++;vlT+=parseMoney(p.vlTotal||'');if(p.status==='cut')vlC+=parseMoney(p.vlTotal||'');else if(p.status==='partial')vlC+=(parseMoney(p.vlTotal||'')-(parseMoney(p.vlUnit||''))*(p.qtdEnviada||0));});});
-  var pct=tot?((cut+par)/tot*100).toFixed(1):0;
+  var tot=0,cut=0,par=0,snt=0,pnd=0,vlT=0,vlC=0,vlS=0,vlP=0;
+  hist.forEach(function(h){(h.products||[]).forEach(function(p){
+    tot++;
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    vlT+=vt;
+    if(p.status==='cut'){cut++;vlC+=vt;}
+    else if(p.status==='partial'){par++;var vc=vt-(vu*(p.qtdEnviada||0));vlC+=vc;vlP+=vc;vlS+=(vt-vc);}
+    else if(p.status==='sent'){snt++;vlS+=vt;}
+    else pnd++;
+  });});
+  var t1=tot||1;
+  var pctCut=(cut/t1*100).toFixed(1), pctPar=(par/t1*100).toFixed(1),
+      pctSnt=(snt/t1*100).toFixed(1), pctGeral=((cut+par)/t1*100).toFixed(1);
   var byF={};
-  hist.forEach(function(h){var f=h.filial||'?';if(!byF[f])byF[f]={o:0,p:0,c:0,vt:0,vc:0};byF[f].o++;(h.products||[]).forEach(function(p){byF[f].p++;if(p.status==='cut'||p.status==='partial')byF[f].c++;byF[f].vt+=parseMoney(p.vlTotal||'');if(p.status==='cut')byF[f].vc+=parseMoney(p.vlTotal||'');});});
-  var html='<div style="margin-bottom:8px"><div class="sec-title">📊 Resumo Geral de Cortes</div>';
-  html+='<div class="kpi-row"><div class="kpi-box"><div class="kpi-n">'+hist.length+'</div><div class="kpi-l">Orçamentos</div></div><div class="kpi-box"><div class="kpi-n">'+tot+'</div><div class="kpi-l">Total Itens</div></div><div class="kpi-box"><div class="kpi-n red">'+cut+'</div><div class="kpi-l">Cortes Totais</div></div><div class="kpi-box"><div class="kpi-n gld">'+par+'</div><div class="kpi-l">Cortes Parciais</div></div><div class="kpi-box"><div class="kpi-n grn">'+snt+'</div><div class="kpi-l">Enviados</div></div><div class="kpi-box"><div class="kpi-n red">'+pct+'%</div><div class="kpi-l">% Geral Corte</div></div><div class="kpi-box"><div class="kpi-n">'+fmtMoney(vlT)+'</div><div class="kpi-l">Valor Total Orçado</div></div><div class="kpi-box"><div class="kpi-n red">'+fmtMoney(vlC)+'</div><div class="kpi-l">Valor em Corte</div></div></div>';
-  html+='<div class="sec-title" style="margin-top:6px">🏪 Por Filial</div>';
-  html+='<div class="tbl-wrap"><table><thead><tr><th class="ns">Filial</th><th class="ns" style="text-align:right">Orçamentos</th><th class="ns" style="text-align:right">Itens</th><th class="ns" style="text-align:right">Cortes</th><th class="ns" style="text-align:right">% Corte</th><th class="ns" style="text-align:right">Vl. Total</th><th class="ns" style="text-align:right">Vl. Corte</th></tr></thead><tbody>';
-  Object.keys(byF).sort().forEach(function(f,i){var d=byF[f];var pp=d.p?((d.c/d.p)*100).toFixed(1):0;var bg=i%2===0?'#FFFEF5':'#F5EDD8';html+='<tr style="background:'+bg+'"><td style="padding:3px 5px;font-weight:bold;color:#AA6000">'+f+'</td><td style="padding:3px 5px;text-align:right">'+d.o+'</td><td style="padding:3px 5px;text-align:right">'+d.p+'</td><td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">'+d.c+'</td><td style="padding:3px 5px;text-align:right;font-weight:bold;color:'+(parseFloat(pp)>20?'#CC0000':'#226600')+'">'+pp+'%</td><td style="padding:3px 5px;text-align:right;font-family:Courier New">'+fmtMoney(d.vt)+'</td><td style="padding:3px 5px;text-align:right;font-family:Courier New;color:#CC0000">'+fmtMoney(d.vc)+'</td></tr>';});
+  hist.forEach(function(h){var f=h.filial||'?';if(!byF[f])byF[f]={o:0,p:0,c:0,pa:0,s:0,vt:0,vc:0,vs:0};byF[f].o++;(h.products||[]).forEach(function(p){
+    byF[f].p++;
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    byF[f].vt+=vt;
+    if(p.status==='cut'){byF[f].c++;byF[f].vc+=vt;}
+    else if(p.status==='partial'){byF[f].pa++;var vc=vt-(vu*(p.qtdEnviada||0));byF[f].vc+=vc;byF[f].vs+=(vt-vc);}
+    else if(p.status==='sent'){byF[f].s++;byF[f].vs+=vt;}
+  });});
+  var html='<div style="margin-bottom:8px"><div class="sec-title">📊 Resumo Geral de Cortes e Entregas</div>';
+  // KPI boxes
+  html+='<div class="kpi-row">';
+  html+='<div class="kpi-box"><div class="kpi-n">'+hist.length+'</div><div class="kpi-l">Orçamentos</div></div>';
+  html+='<div class="kpi-box"><div class="kpi-n">'+tot+'</div><div class="kpi-l">Total Itens</div></div>';
+  html+='<div class="kpi-box"><div class="kpi-n grn">'+snt+'</div><div class="kpi-l">✅ Enviados</div></div>';
+  html+='<div class="kpi-box"><div class="kpi-n red">'+cut+'</div><div class="kpi-l">✕ Corte Total</div></div>';
+  html+='<div class="kpi-box"><div class="kpi-n gld">'+par+'</div><div class="kpi-l">~ Corte Parcial</div></div>';
+  html+='</div>';
+  // % breakdown bar
+  html+='<div style="background:#FFF8E0;border:1px solid #C09000;padding:8px 10px;margin-bottom:8px;font-size:11px">';
+  html+='<b>📊 Percentual por Status:</b>&nbsp;&nbsp;';
+  html+='<span style="background:#C8EEC8;color:#226600;font-weight:bold;padding:2px 8px;border:1px solid #449900;margin-right:6px">✅ Enviados: '+pctSnt+'% — '+fmtMoney(vlS)+'</span>';
+  html+='<span style="background:#FFCCCC;color:#CC0000;font-weight:bold;padding:2px 8px;border:1px solid #880000;margin-right:6px">✕ Corte Total: '+pctCut+'% — '+fmtMoney(vlC)+'</span>';
+  html+='<span style="background:#FFEEAA;color:#AA6600;font-weight:bold;padding:2px 8px;border:1px solid #AA8800;margin-right:6px">~ Parcial: '+pctPar+'% — '+fmtMoney(vlP)+'</span>';
+  html+='<br><span style="background:#FFE0E0;color:#AA0000;font-weight:bold;padding:2px 8px;border:1px solid #CC0000;margin-top:4px;display:inline-block">⚠ Corte Geral (total+parcial): '+pctGeral+'% — '+fmtMoney(vlC)+'</span>';
+  html+='&nbsp;&nbsp;<span style="color:#553300;font-weight:bold">💰 Total Orçado: '+fmtMoney(vlT)+'</span>';
+  html+='</div>';
+  // By Filial table
+  html+='<div class="sec-title" style="margin-top:6px">🏪 Por Filial — Detalhado</div>';
+  html+='<div class="tbl-wrap"><table><thead><tr>';
+  html+='<th class="ns">Filial</th><th class="ns" style="text-align:right">Orç.</th><th class="ns" style="text-align:right">Itens</th>';
+  html+='<th class="ns" style="text-align:right">✅ Env.</th><th class="ns" style="text-align:right">%Env</th>';
+  html+='<th class="ns" style="text-align:right">✕ Corte</th><th class="ns" style="text-align:right">%Corte</th>';
+  html+='<th class="ns" style="text-align:right">~ Parcial</th>';
+  html+='<th class="ns" style="text-align:right">⚠ %Geral</th>';
+  html+='<th class="ns" style="text-align:right">💰 Vl.Total</th>';
+  html+='<th class="ns" style="text-align:right">✅ Vl.Env.</th>';
+  html+='<th class="ns" style="text-align:right">✕ Vl.Corte</th>';
+  html+='</tr></thead><tbody>';
+  Object.keys(byF).sort().forEach(function(f,i){
+    var d=byF[f]; var t2=d.p||1;
+    var ppS=(d.s/t2*100).toFixed(1), ppC=(d.c/t2*100).toFixed(1), ppG=((d.c+d.pa)/t2*100).toFixed(1);
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    html+='<tr style="background:'+bg+'">';
+    html+='<td style="padding:3px 5px;font-weight:bold;color:#AA6000">'+f+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+d.o+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+d.p+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#006600;font-weight:bold">'+d.s+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-weight:bold;color:#006600">'+ppS+'%</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">'+d.c+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-weight:bold;color:'+(parseFloat(ppC)>20?'#CC0000':'#226600')+'">'+ppC+'%</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#AA6600;font-weight:bold">'+d.pa+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-weight:bold;color:'+(parseFloat(ppG)>20?'#CC0000':'#226600')+'">'+ppG+'%</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New">'+fmtMoney(d.vt)+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;color:#006600">'+fmtMoney(d.vs)+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;color:#CC0000">'+fmtMoney(d.vc)+'</td>';
+    html+='</tr>';
+  });
   html+='</tbody></table></div></div>';
   return html;
 }
@@ -2389,19 +2517,128 @@ function expExcel(){
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Pedido');
   XLSX.writeFile(wb,'Pedido_'+orderInfo.numero+'_'+today()+'.xlsx');toast('📥 Exportado!','ok');
 }
-function expCustExcel(rows2,title){
-  var data=bldHdr(title);rows2.forEach(function(p){data.push([p.codigo,p.nome,p.unidade,p.qtdSolicitada,p.qtdEnviada,p.vlUnit,p.vlTotal,LBL2[p.status]]);});
-  var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:16},{wch:44},{wch:10},{wch:10},{wch:10},{wch:12},{wch:12},{wch:14}];
+function expCustExcel(rows2, title, showPct, showVal, showSum){
+  showPct = showPct!==false; showVal = showVal!==false; showSum = showSum!==false;
+  var s = calcRelStats(rows2);
+  var data = bldHdr(title);
+  if(showSum){
+    data.push([]);
+    data.push(['RESUMO']);
+    data.push(['✅ Enviados', s.snt, s.pctSnt+'%', showVal?fmtMoney(s.vlSnt):'']);
+    data.push(['✕ Corte Total', s.cut, s.pctCut+'%', showVal?fmtMoney(s.vlCut):'']);
+    data.push(['~ Parcial', s.par, s.pctPar+'%', showVal?fmtMoney(s.vlPar):'']);
+    data.push(['⚠ Corte Geral (total+parcial)', s.cut+s.par, s.pctGeral+'%', showVal?fmtMoney(s.vlCut):'']);
+    if(showVal) data.push(['💰 Total Orçado', '', '', fmtMoney(s.vlTot)]);
+    data.push([]);
+  }
+  var hdr = ['Código','Descrição','Un.','Qtd.S.','Qtd.E.','Vl.Unit.(R$)','Vl.Total(R$)','Situação'];
+  if(showPct) hdr.push('% Entregue');
+  data.push(hdr);
+  rows2.forEach(function(p){
+    var vu = showVal ? (p.vlUnitNum||parseMoney(p.vlUnit||'')) : p.vlUnit;
+    var vt = showVal ? (p.vlTotalNum||parseMoney(p.vlTotal||'')) : p.vlTotal;
+    var row = [p.codigo, p.nome, p.unidade, p.qtdSolicitada, p.qtdEnviada,
+               showVal?(vu>0?vu:'—'):p.vlUnit||'—',
+               showVal?(vt>0?vt:'—'):p.vlTotal||'—',
+               LBL2[p.status]];
+    if(showPct){
+      var pct=p.status==='sent'?'100%':p.status==='cut'?'0%':p.status==='partial'?(p.qtdSolicitada?Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%':'—'):'—';
+      row.push(pct);
+    }
+    data.push(row);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:16},{wch:44},{wch:10},{wch:10},{wch:10},{wch:14},{wch:14},{wch:14},{wch:12}];
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Relatório');
   XLSX.writeFile(wb,'Relatorio_'+today()+'.xlsx');toast('📥 Exportado!','ok');
 }
 function expCutsPDF(){var c=products.filter(function(p){return p.status==='cut'||p.status==='partial';});if(!c.length){toast('Sem cortes.','err');return;}printRows(c,'LISTA DE CORTES — '+orderInfo.filial);}
 function expPDF(){printRows(products,'PEDIDO DE VENDA — '+orderInfo.filial);}
-function printRows(rows,title){
-  var CLR={sent:'#226600',cut:'#AA0000',partial:'#885500',pending:'#555'};
-  var trs=rows.map(function(p){return'<tr><td>'+p.codigo+'</td><td>'+p.nome+'</td><td>'+p.unidade+'</td><td align=right>'+p.qtdSolicitada+'</td><td align=right>'+p.qtdEnviada+'</td><td align=right>'+(p.vlUnit?'R$ '+p.vlUnit:'—')+'</td><td align=right>'+(p.vlTotal?'R$ '+p.vlTotal:'—')+'</td><td style="color:'+CLR[p.status]+';font-weight:bold">'+LBL2[p.status]+'</td></tr>';}).join('');
+function calcRelStats(rows){
+  var tot=rows.length||1, snt=0, cut=0, par=0, pnd=0, vlTot=0, vlSnt=0, vlCut=0, vlPar=0;
+  rows.forEach(function(p){
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    vlTot+=vt;
+    if(p.status==='sent'){snt++;vlSnt+=vt;}
+    else if(p.status==='cut'){cut++;vlCut+=vt;}
+    else if(p.status==='partial'){par++;var vc=vt-(vu*(p.qtdEnviada||0));vlCut+=vc;vlSnt+=(vt-vc);}
+    else pnd++;
+  });
+  return{tot:tot,snt:snt,cut:cut,par:par,pnd:pnd,
+    pctSnt:((snt/tot)*100).toFixed(1),pctCut:((cut/tot)*100).toFixed(1),
+    pctPar:((par/tot)*100).toFixed(1),pctGeral:(((cut+par)/tot)*100).toFixed(1),
+    vlTot:vlTot,vlSnt:vlSnt,vlCut:vlCut,vlPar:vlPar};
+}
+
+function buildSummaryHTML(s, showPct, showVal){
+  var html='<div style="margin:8px 0;padding:8px;background:#FFF8E0;border:1px solid #C09000;font-size:10px">';
+  html+='<b style="font-size:11px">📊 Resumo:</b>&nbsp;';
+  html+='<span style="color:#006600;font-weight:bold">✅ Enviados: '+s.snt+' ('+s.pctSnt+'%)'+(showVal?' — '+fmtMoney(s.vlSnt):'')+'</span> &nbsp;|&nbsp; ';
+  html+='<span style="color:#CC0000;font-weight:bold">✕ Corte Total: '+s.cut+' ('+s.pctCut+'%)'+(showVal?' — '+fmtMoney(s.vlCut):'')+'</span> &nbsp;|&nbsp; ';
+  html+='<span style="color:#AA6600;font-weight:bold">~ Parcial: '+s.par+' ('+s.pctPar+'%)'+(showVal?' — '+fmtMoney(s.vlPar):'')+'</span>';
+  if(s.pnd>0) html+=' &nbsp;|&nbsp; <span style="color:#888">⬜ Pendentes: '+s.pnd+'</span>';
+  html+='<br><span style="font-weight:bold;color:#AA0000">⚠ Corte Geral (total+parcial): '+s.pctGeral+'%'+(showVal?' — '+fmtMoney(s.vlCut):'')+'</span>';
+  if(showVal) html+='&nbsp;&nbsp;<span style="color:#553300">| 💰 Total Orçado: '+fmtMoney(s.vlTot)+'</span>';
+  html+='</div>';
+  return html;
+}
+
+function getProdHistHtml(cod, nom){
+  var hist=getHist(), rows=[];
+  hist.forEach(function(h){
+    (h.products||[]).forEach(function(p){
+      if(cod&&p.codigo===cod||(nom&&p.nome.toLowerCase().indexOf(nom.toLowerCase())>=0)){
+        rows.push({orc:h.numero,filial:h.filial,data:h.data,
+          codigo:p.codigo,nome:p.nome,unidade:p.unidade,
+          qtdS:p.qtdSolicitada,qtdE:p.qtdEnviada,
+          vlUnit:p.vlUnit,vlTotal:p.vlTotal,
+          vlUnitNum:p.vlUnitNum||parseMoney(p.vlUnit||''),
+          vlTotalNum:p.vlTotalNum||parseMoney(p.vlTotal||''),
+          status:p.status});
+      }
+    });
+  });
+  return rows;
+}
+
+function printRows(rows, title, showPct, showVal, showSum, showHist){
+  showPct = showPct!==false; showVal = showVal!==false;
+  showSum = showSum!==false; showHist = !!showHist;
+  var CLR={sent:'#006600',cut:'#AA0000',partial:'#885500',pending:'#555'};
+  var s = calcRelStats(rows);
+  var sumHtml='', pctHtml='';
+  if(showSum){
+    sumHtml='<div style="margin:8px 0;padding:8px;background:#FFF8E0;border:1px solid #C09000;font-size:9.5px">';
+    sumHtml+='<b>📊 Resumo</b><br>';
+    sumHtml+='<span style="color:#006600;font-weight:bold">✅ Enviados: '+s.snt+' ('+s.pctSnt+'%)'+(showVal?' — '+fmtMoney(s.vlSnt):'')+'</span><br>';
+    sumHtml+='<span style="color:#CC0000;font-weight:bold">✕ Corte Total: '+s.cut+' ('+s.pctCut+'%)'+(showVal?' — '+fmtMoney(s.vlCut):'')+'</span><br>';
+    sumHtml+='<span style="color:#AA6600;font-weight:bold">~ Parcial: '+s.par+' ('+s.pctPar+'%)'+(showVal?' — '+fmtMoney(s.vlPar):'')+'</span><br>';
+    if(s.pnd>0) sumHtml+='<span style="color:#888">⬜ Pendentes: '+s.pnd+'</span><br>';
+    sumHtml+='<b style="color:#AA0000">⚠ Corte Geral: '+s.pctGeral+'%'+(showVal?' — '+fmtMoney(s.vlCut):'')+'</b>';
+    if(showVal) sumHtml+=' &nbsp;&nbsp;<span style="color:#553300">💰 Total Orçado: '+fmtMoney(s.vlTot)+'</span>';
+    sumHtml+='</div>';
+  }
+  var trs=rows.map(function(p){
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    var pctRow='';
+    if(showPct){
+      var lbl=p.status==='sent'?'✅100%':p.status==='cut'?'✕0%':p.status==='partial'?(p.qtdSolicitada?'~'+Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%':'~'):'—';
+      pctRow='<td style="color:'+CLR[p.status]+';font-weight:bold;text-align:center">'+lbl+'</td>';
+    }
+    var valUnit=showVal?(vu>0?fmtMoney(vu):'—'):'—';
+    var valTot=showVal?(vt>0?fmtMoney(vt):'—'):'—';
+    return'<tr><td>'+p.codigo+'</td><td>'+p.nome+'</td><td>'+p.unidade+'</td><td align=right>'+p.qtdSolicitada+'</td><td align=right>'+p.qtdEnviada+'</td><td align=right>'+valUnit+'</td><td align=right>'+valTot+'</td><td style="color:'+CLR[p.status]+';font-weight:bold">'+LBL2[p.status]+'</td>'+pctRow+'</tr>';
+  }).join('');
+  var pctHeader=showPct?'<th>% Ent.</th>':'';
   var w=window.open('','_blank');
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:Arial,sans-serif;padding:16px;font-size:10px;color:#000}.brand{color:#CC7000;font-weight:bold;font-size:13px;font-style:italic}h2{font-size:12px;font-weight:bold;margin:4px 0;font-style:italic}.sub{font-size:9px;color:#444;line-height:1.6;margin-bottom:8px;border-bottom:1px solid #CCC;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:#CC6600;color:#FFF;padding:3px 4px;font-size:8.5px;font-style:italic;font-weight:bold;border:1px solid #AA4400}td{padding:3px 4px;border:1px solid #DDD;font-size:9.5px}tr:nth-child(even){background:#FFF8E7}</style></head><body><div class="brand">comercial do norte — VSOrçamentos</div><h2>'+title+'</h2><div class="sub">'+gLbl+': <b>'+orderInfo.gestor+'</b> | Nº: <b>'+orderInfo.numero+'</b> | Data: <b>'+orderInfo.data+'</b><br>Filial: <b>'+orderInfo.filial+'</b> | CNPJ: '+orderInfo.cnpj+'<br>Endereço: '+orderInfo.endereco+'<br>Gerado: '+new Date().toLocaleString('pt-BR')+'</div><table><thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Qtd.S.</th><th>Qtd.E.</th><th>Vl.Unit.</th><th>Vl.Total</th><th>Situação</th></tr></thead><tbody>'+trs+'</tbody></table></body></html>');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:Arial,sans-serif;padding:16px;font-size:10px;color:#000}.brand{color:#CC7000;font-weight:bold;font-size:13px;font-style:italic}h2{font-size:12px;font-weight:bold;margin:4px 0;font-style:italic}.sub{font-size:9px;color:#444;line-height:1.6;margin-bottom:8px;border-bottom:1px solid #CCC;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:#CC6600;color:#FFF;padding:3px 4px;font-size:8.5px;font-style:italic;font-weight:bold;border:1px solid #AA4400}td{padding:3px 4px;border:1px solid #DDD;font-size:9.5px}tr:nth-child(even){background:#FFF8E7}.sum{background:#FFF8E0;border:1px solid #C09000;padding:6px;margin-bottom:8px;font-size:9.5px}</style></head><body>');
+  w.document.write('<div class="brand">comercial do norte — VSOrçamentos</div><h2>'+title+'</h2>');
+  w.document.write('<div class="sub">'+gLbl+': <b>'+orderInfo.gestor+'</b> | Nº: <b>'+orderInfo.numero+'</b> | Data: <b>'+orderInfo.data+'</b><br>Filial: <b>'+orderInfo.filial+'</b> | CNPJ: '+orderInfo.cnpj+'<br>Endereço: '+orderInfo.endereco+'<br>Gerado: '+new Date().toLocaleString('pt-BR')+'</div>');
+  w.document.write(sumHtml);
+  w.document.write('<table><thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Qtd.S.</th><th>Qtd.E.</th><th>Vl.Unit.</th><th>Vl.Total</th><th>Situação</th>'+pctHeader+'</tr></thead><tbody>'+trs+'</tbody></table>');
+  w.document.write('</body></html>');
   w.document.close();setTimeout(function(){w.print();},350);toast('🖨 Imprimindo...','ok');
 }
 
@@ -2539,6 +2776,227 @@ async function claudePDF(f) {
   });
   return parsed;
 }
+// ════════════════════════════════════════════════════════════
+// HISTÓRICO DE PRODUTO (feature 5)
+// ════════════════════════════════════════════════════════════
+var _phRows = [];
+
+function searchProdHist(){
+  var cod = document.getElementById('ph-cod').value.trim();
+  var nom = document.getElementById('ph-nom').value.trim();
+  if(!cod && !nom){ toast('Informe o código ou nome do produto.','err'); return; }
+  _phRows = getProdHistHtml(cod, nom);
+  renderProdHistResult(_phRows);
+}
+
+function quickProdHist(cod){
+  closeM('m-hview');
+  document.getElementById('ph-cod').value = cod;
+  document.getElementById('ph-nom').value = '';
+  _phRows = getProdHistHtml(cod, '');
+  renderProdHistResult(_phRows);
+  openM('m-prodhist');
+}
+
+function openProdHistFromCard(hid){
+  document.getElementById('ph-cod').value = '';
+  document.getElementById('ph-nom').value = '';
+  document.getElementById('ph-result').innerHTML = '<div style="text-align:center;padding:12px;color:#888;font-style:italic">Informe o código ou nome do produto acima e clique em Buscar.</div>';
+  openM('m-prodhist');
+}
+
+function renderProdHistResult(rows){
+  var el = document.getElementById('ph-result');
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:14px;color:#888;font-style:italic">Nenhum resultado encontrado.</div>';
+    return;
+  }
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#888'};
+  // Summary for this product
+  var tot=rows.length, snt=0, cut=0, par=0;
+  var vlTot=0, vlCorte=0, vlSnt=0;
+  rows.forEach(function(r){
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    vlTot+=vt;
+    if(r.status==='sent'){snt++;vlSnt+=vt;}
+    else if(r.status==='cut'){cut++;vlCorte+=vt;}
+    else if(r.status==='partial'){par++;var vc=vt-(vu*(r.qtdE||0));vlCorte+=vc;vlSnt+=(vt-vc);}
+  });
+  var pctSnt=(snt/tot*100).toFixed(1), pctCut=(cut/tot*100).toFixed(1),
+      pctPar=(par/tot*100).toFixed(1), pctG=((cut+par)/tot*100).toFixed(1);
+  var nm = rows[0].nome;
+  var html='<div style="background:#FFF8E0;border:1px solid #C09000;padding:8px;margin-bottom:8px;font-size:11px">';
+  html+='<b>'+rows[0].codigo+' — '+nm+'</b><br>';
+  html+='Aparece em <b>'+tot+'</b> orçamento(s) &nbsp;|&nbsp; ';
+  html+='<span style="color:#006600;font-weight:bold">✅ Enviado: '+snt+'× ('+pctSnt+'%) — '+fmtMoney(vlSnt)+'</span> &nbsp;';
+  html+='<span style="color:#CC0000;font-weight:bold">✕ Corte Total: '+cut+'× ('+pctCut+'%) — '+fmtMoney(vlCorte)+'</span> &nbsp;';
+  html+='<span style="color:#AA6600;font-weight:bold">~ Parcial: '+par+'× ('+pctPar+'%)</span><br>';
+  html+='<b style="color:#AA0000">⚠ Corte Geral: '+pctG+'% &nbsp;|&nbsp; 💰 Total Orçado nesses pedidos: '+fmtMoney(vlTot)+'</b>';
+  html+='</div>';
+  html+='<div class="tbl-wrap"><table style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html+='<th style="padding:3px 5px">Orç.</th><th>Filial</th><th>Data</th>';
+  html+='<th>Un.</th><th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
+  html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
+  html+='<th>Situação</th><th style="text-align:center">%</th>';
+  html+='</tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var pct=r.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
+            r.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
+            r.status==='partial'?(r.qtdS?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(r.qtdE/r.qtdS*100)+'%</span>':'—'):'—';
+    html+='<tr style="background:'+bg+'">';
+    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold">'+r.orc+'</td>';
+    html+='<td style="padding:3px 5px;font-weight:bold;color:#AA6000">'+r.filial+'</td>';
+    html+='<td style="padding:3px 5px">'+r.data+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+r.unidade+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+r.qtdS+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+r.qtdE+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New">'+(vu>0?fmtMoney(vu):'—')+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
+    html+='<td style="padding:3px 5px;color:'+CLR[r.status]+';font-weight:bold">'+LBL[r.status]+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function printProdHist(){
+  if(!_phRows.length){ toast('Faça uma busca primeiro.','err'); return; }
+  var cod = document.getElementById('ph-cod').value || _phRows[0].codigo;
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#555'};
+  var tot=_phRows.length,snt=0,cut=0,par=0,vlTot=0,vlC=0,vlS=0;
+  _phRows.forEach(function(r){
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    vlTot+=vt;
+    if(r.status==='sent'){snt++;vlS+=vt;}
+    else if(r.status==='cut'){cut++;vlC+=vt;}
+    else if(r.status==='partial'){par++;var vc=vt-(vu*(r.qtdE||0));vlC+=vc;vlS+=(vt-vc);}
+  });
+  var trs=_phRows.map(function(r){
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var pct=r.status==='sent'?'100%':r.status==='cut'?'0%':r.status==='partial'?(r.qtdS?Math.round(r.qtdE/r.qtdS*100)+'%':'—'):'—';
+    return'<tr><td>'+r.orc+'</td><td>'+r.filial+'</td><td>'+r.data+'</td><td>'+r.unidade+'</td><td align=right>'+r.qtdS+'</td><td align=right>'+r.qtdE+'</td><td align=right>'+(vu>0?fmtMoney(vu):'—')+'</td><td align=right>'+(vt>0?fmtMoney(vt):'—')+'</td><td style="color:'+CLR[r.status]+';font-weight:bold">'+LBL[r.status]+'</td><td align=center>'+pct+'</td></tr>';
+  }).join('');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Histórico — '+cod+'</title><style>body{font-family:Arial,sans-serif;padding:16px;font-size:10px}.brand{color:#CC7000;font-weight:bold;font-size:13px;font-style:italic}h2{font-size:12px;font-weight:bold;margin:4px 0;font-style:italic}.sub{font-size:9px;color:#444;margin-bottom:8px;border-bottom:1px solid #CCC;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:#CC6600;color:#FFF;padding:3px 4px;font-size:8.5px;font-style:italic;font-weight:bold;border:1px solid #AA4400}td{padding:3px 4px;border:1px solid #DDD;font-size:9.5px}tr:nth-child(even){background:#FFF8E7}.sum{background:#FFF8E0;border:1px solid #C09000;padding:6px;margin:8px 0;font-size:9.5px}</style></head>');
+  w.document.write('<body><div class="brand">comercial do norte — Histórico de Produto</div>');
+  w.document.write('<h2>'+cod+' — '+(_phRows[0].nome||'')+'</h2>');
+  w.document.write('<div class="sum"><b>Resumo:</b> '+tot+' ocorrências &nbsp;| ');
+  w.document.write('<span style="color:#006600">✅ Enviado: '+snt+'× ('+((snt/tot)*100).toFixed(1)+'%) — '+fmtMoney(vlS)+'</span> &nbsp;| ');
+  w.document.write('<span style="color:#CC0000">✕ Corte: '+cut+'× ('+((cut/tot)*100).toFixed(1)+'%) — '+fmtMoney(vlC)+'</span> &nbsp;| ');
+  w.document.write('<span style="color:#AA6600">~ Parcial: '+par+'×</span><br>');
+  w.document.write('<b style="color:#AA0000">⚠ Corte Geral: '+((cut+par)/tot*100).toFixed(1)+'% &nbsp;| 💰 Total orçado: '+fmtMoney(vlTot)+'</b></div>');
+  w.document.write('<table><thead><tr><th>Orç.</th><th>Filial</th><th>Data</th><th>Un.</th><th>Qtd.S.</th><th>Qtd.E.</th><th>Vl.Unit.</th><th>Vl.Total</th><th>Situação</th><th>% Ent.</th></tr></thead><tbody>'+trs+'</tbody></table>');
+  w.document.write('<div style="font-size:8px;color:#888;margin-top:8px">Gerado em: '+new Date().toLocaleString('pt-BR')+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); setTimeout(function(){w.print();},350); toast('🖨 Imprimindo...','ok');
+}
+
+function excelProdHist(){
+  if(!_phRows.length){ toast('Faça uma busca primeiro.','err'); return; }
+  var cod = document.getElementById('ph-cod').value || _phRows[0].codigo;
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var tot=_phRows.length,snt=0,cut=0,par=0,vlTot=0,vlC=0,vlS=0;
+  _phRows.forEach(function(r){
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    vlTot+=vt;
+    if(r.status==='sent'){snt++;vlS+=vt;}
+    else if(r.status==='cut'){cut++;vlC+=vt;}
+    else if(r.status==='partial'){par++;var vc=vt-(vu*(r.qtdE||0));vlC+=vc;vlS+=(vt-vc);}
+  });
+  var data=[
+    ['HISTÓRICO DE PRODUTO — Comercial do Norte'],
+    ['Produto: '+cod+' — '+(_phRows[0].nome||'')],
+    ['Gerado: '+new Date().toLocaleString('pt-BR')],
+    [],
+    ['RESUMO'],
+    ['Total ocorrências', tot],
+    ['✅ Enviado', snt, (snt/tot*100).toFixed(1)+'%', fmtMoney(vlS)],
+    ['✕ Corte Total', cut, (cut/tot*100).toFixed(1)+'%', fmtMoney(vlC)],
+    ['~ Parcial', par, (par/tot*100).toFixed(1)+'%'],
+    ['⚠ Corte Geral', cut+par, ((cut+par)/tot*100).toFixed(1)+'%'],
+    ['💰 Total Orçado nestes pedidos', '', '', fmtMoney(vlTot)],
+    [],
+    ['Orç.','Filial','Data','Un.','Qtd.S.','Qtd.E.','Vl.Unit.(R$)','Vl.Total(R$)','Situação','% Entregue']
+  ];
+  _phRows.forEach(function(r){
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var pct=r.status==='sent'?'100%':r.status==='cut'?'0%':r.status==='partial'?(r.qtdS?Math.round(r.qtdE/r.qtdS*100)+'%':'—'):'—';
+    data.push([r.orc,r.filial,r.data,r.unidade,r.qtdS,r.qtdE,vu>0?vu:'',vt>0?vt:'',LBL[r.status],pct]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:12},{wch:16},{wch:12},{wch:8},{wch:8},{wch:8},{wch:14},{wch:14},{wch:12},{wch:10}];
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Histórico Produto');
+  XLSX.writeFile(wb,'HistProduto_'+cod+'_'+today()+'.xlsx'); toast('📥 Exportado!','ok');
+}
+
+// Print/Excel for individual hist orc
+function printHistOrc(){
+  var h=getHist().find(function(x){return x.id===viewingId;});if(!h)return;
+  var prods=h.products||[];
+  var s=calcRelStats(prods);
+  var CLR={sent:'#226600',cut:'#AA0000',partial:'#885500',pending:'#555'};
+  var trs=prods.map(function(p){
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var pct=p.status==='sent'?'100%':p.status==='cut'?'0%':p.status==='partial'?(p.qtdSolicitada?Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%':'—'):'—';
+    return'<tr><td>'+p.codigo+'</td><td>'+p.nome+'</td><td>'+p.unidade+'</td><td align=right>'+p.qtdSolicitada+'</td><td align=right>'+p.qtdEnviada+'</td><td align=right>'+(vu>0?fmtMoney(vu):'—')+'</td><td align=right>'+(vt>0?fmtMoney(vt):'—')+'</td><td style="color:'+CLR[p.status]+';font-weight:bold">'+LBL2[p.status]+'</td><td>'+pct+'</td></tr>';
+  }).join('');
+  var title='ORÇAMENTO '+h.numero+' — '+h.filial;
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>body{font-family:Arial,sans-serif;padding:16px;font-size:10px;color:#000}.brand{color:#CC7000;font-weight:bold;font-size:13px;font-style:italic}h2{font-size:12px;font-weight:bold;margin:4px 0;font-style:italic}.sub{font-size:9px;color:#444;line-height:1.6;margin-bottom:8px;border-bottom:1px solid #CCC;padding-bottom:6px}table{width:100%;border-collapse:collapse}th{background:#CC6600;color:#FFF;padding:3px 4px;font-size:8.5px;font-style:italic;font-weight:bold;border:1px solid #AA4400}td{padding:3px 4px;border:1px solid #DDD;font-size:9.5px}tr:nth-child(even){background:#FFF8E7}.sum{background:#FFF8E0;border:1px solid #C09000;padding:6px;margin-bottom:8px;font-size:9.5px}</style></head><body>');
+  w.document.write('<div class="brand">comercial do norte — VSOrçamentos</div><h2>'+title+'</h2>');
+  w.document.write('<div class="sub">'+gLbl+': <b>'+h.gestor+'</b> | Data: <b>'+h.data+'</b> | CNPJ: '+h.cnpj+'<br>Endereço: '+h.endereco+'<br>Gerado: '+new Date().toLocaleString('pt-BR')+'</div>');
+  w.document.write('<div class="sum"><b>📊 Resumo:</b> ');
+  w.document.write('✅ Enviados: '+s.snt+' ('+s.pctSnt+'%) — '+fmtMoney(s.vlSnt)+' &nbsp;| ');
+  w.document.write('✕ Corte: '+s.cut+' ('+s.pctCut+'%) — '+fmtMoney(s.vlCut)+' &nbsp;| ');
+  w.document.write('~ Parcial: '+s.par+' ('+s.pctPar+'%)<br>');
+  w.document.write('<b style="color:#AA0000">⚠ Corte Geral: '+s.pctGeral+'% &nbsp;| 💰 Total Orçado: '+fmtMoney(s.vlTot)+'</b></div>');
+  w.document.write('<table><thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>Qtd.S.</th><th>Qtd.E.</th><th>Vl.Unit.</th><th>Vl.Total</th><th>Situação</th><th>%</th></tr></thead><tbody>'+trs+'</tbody></table>');
+  w.document.write('</body></html>');
+  w.document.close(); setTimeout(function(){w.print();},350); toast('🖨 Imprimindo...','ok');
+}
+
+function excelHistOrc(){
+  var h=getHist().find(function(x){return x.id===viewingId;});if(!h)return;
+  var prods=h.products||[];
+  var s=calcRelStats(prods);
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var data=[
+    ['ORÇAMENTO '+h.numero+' — '+h.filial],
+    [gLbl+': '+h.gestor+' | Data: '+h.data+' | Total Orçado: '+fmtMoney(s.vlTot)],
+    [],
+    ['RESUMO'],
+    ['✅ Enviados', s.snt, s.pctSnt+'%', fmtMoney(s.vlSnt)],
+    ['✕ Corte Total', s.cut, s.pctCut+'%', fmtMoney(s.vlCut)],
+    ['~ Parcial', s.par, s.pctPar+'%'],
+    ['⚠ Corte Geral', s.cut+s.par, s.pctGeral+'%'],
+    ['💰 Total Orçado', '', '', fmtMoney(s.vlTot)],
+    [],
+    ['Código','Descrição','Un.','Qtd.S.','Qtd.E.','Vl.Unit.(R$)','Vl.Total(R$)','Situação','% Entregue']
+  ];
+  prods.forEach(function(p){
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var pct=p.status==='sent'?'100%':p.status==='cut'?'0%':p.status==='partial'?(p.qtdSolicitada?Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%':'—'):'—';
+    data.push([p.codigo,p.nome,p.unidade,p.qtdSolicitada,p.qtdEnviada,vu>0?vu:'',vt>0?vt:'',LBL[p.status],pct]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:16},{wch:44},{wch:8},{wch:8},{wch:8},{wch:14},{wch:14},{wch:12},{wch:10}];
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Orçamento');
+  XLSX.writeFile(wb,'Orc_'+h.numero+'_'+h.filial+'_'+today()+'.xlsx'); toast('📥 Exportado!','ok');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE USUARIOS & SINCRONIZACAO — Comercial do Norte
 // Usuário TRANSFERENCIA (senha 574092): acesso total
