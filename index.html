@@ -1599,6 +1599,8 @@ tbody tr.row-p { background: #FFF0A0 !important; }
         </select>
         <input id="hf-busca" class="vi" placeholder="Buscar nº/filial..." oninput="renderHist()" style="min-width:130px">
         <button class="vbtn" onclick="renderHist()">🔍 Buscar</button>
+        <div class="asep"></div>
+        <button class="vbtn" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF" onclick="openProdHistStandalone()" title="Histórico de Produto [F10]">🔍 Hist. Produto <span style="font-size:8px;opacity:.7">[F10]</span></button>
         <span id="hcount" style="font-size:10px;font-weight:bold;color:#553300;margin-left:auto"></span>
         <button class="vbtn danger sm" onclick="clearHist()">🗑 Limpar tudo</button>
       </div>
@@ -2297,16 +2299,17 @@ function renderHist(){
     html+='</div>';
     html+='<div class="hact" onclick="event.stopPropagation()">';
     html+='<button class="vbtn sm" onclick="loadDirect(\''+h.id+'\')">📋 Carregar</button>';
-    html+='<button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF" onclick="openProdHistFromCard(\''+h.id+'\')">🔍 Produto</button>';
     html+='<button class="vbtn sm danger" onclick="delDirect(\''+h.id+'\')">🗑</button>';
     html+='</div></div>';
   });}
   document.getElementById('hist-list').innerHTML=html;
 }
 
+var _hvSelRow = -1;
+
 function viewHist(id){
   var h=getHist().find(function(x){return x.id===id;});if(!h)return;
-  viewingId=id;
+  viewingId=id; _hvSelRow=-1;
   document.getElementById('mhv-title').textContent='Orçamento '+h.numero+' — '+h.filial;
   var prods=h.products||[];
   var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
@@ -2314,11 +2317,12 @@ function viewHist(id){
   var s=calcRelStats(prods);
   var html='<div style="margin-bottom:6px;font-size:11px"><b>'+gLbl+':</b> '+h.gestor+' | <b>Data:</b> '+h.data+' | <b>Total Orçado:</b> <span style="color:#AA5500;font-weight:bold">'+fmtMoney(s.vlTot)+'</span></div>';
   html+=buildSummaryHTML(s,true,true);
-  html+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html+='<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:4px">💡 Use ↑↓ para navegar · Enter ou 🔍 para ver histórico do produto · Clique no produto para abrir</div>';
+  html+='<table id="mhv-tbl" style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
   html+='<th style="padding:3px 5px;text-align:left">Código</th><th style="padding:3px 5px;text-align:left">Produto</th><th>Un.</th>';
   html+='<th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
   html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
-  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns"></th>';
+  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
   html+='</tr></thead><tbody>';
   prods.forEach(function(p,i){
     var bg=i%2===0?'#FFFEF5':'#F5EDD8';
@@ -2327,7 +2331,9 @@ function viewHist(id){
     var pct=p.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
             p.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
             p.status==='partial'?(p.qtdSolicitada?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%</span>':'—'):'—';
-    html+='<tr style="background:'+bg+'">';
+    var codEsc=p.codigo.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html+='<tr class="mhv-row" data-idx="'+i+'" data-cod="'+codEsc+'" style="background:'+bg+';cursor:pointer" ';
+    html+='onclick="hvRowClick('+i+')" title="Clique para ver histórico deste produto">';
     html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px">'+p.codigo+'</td>';
     html+='<td style="padding:3px 5px">'+p.nome+'</td>';
     html+='<td style="padding:3px 5px;text-align:center">'+p.unidade+'</td>';
@@ -2337,12 +2343,35 @@ function viewHist(id){
     html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
     html+='<td style="padding:3px 5px;color:'+CLR[p.status]+';font-weight:bold">'+LBL[p.status]+'</td>';
     html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
-    html+='<td style="padding:2px 3px"><button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF;font-size:9px" onclick="quickProdHist(\''+p.codigo.replace(/'/g,"\\'")+'\')" title="Ver histórico deste produto">🔍</button></td>';
+    html+='<td style="padding:2px 3px"><button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF;font-size:9px" onclick="event.stopPropagation();quickProdHist(\''+codEsc+'\')" title="Ver histórico deste produto">🔍</button></td>';
     html+='</tr>';
   });
   html+='</tbody></table>';
   document.getElementById('mhv-body').innerHTML=html;
   openM('m-hview');
+  // Focus the table body so arrow keys work immediately
+  setTimeout(function(){ hvSetRow(0); }, 80);
+}
+
+function hvSetRow(idx){
+  var rows=document.querySelectorAll('.mhv-row');
+  if(!rows.length) return;
+  idx = Math.max(0, Math.min(idx, rows.length-1));
+  _hvSelRow = idx;
+  rows.forEach(function(r,i){
+    var isEven = i%2===0;
+    r.style.background = i===idx ? '#FFE860' : (isEven?'#FFFEF5':'#F5EDD8');
+    r.style.outline = i===idx ? '2px solid #003399' : 'none';
+  });
+  rows[idx].scrollIntoView({block:'nearest'});
+}
+
+function hvRowClick(idx){
+  var rows=document.querySelectorAll('.mhv-row');
+  if(!rows[idx]) return;
+  hvSetRow(idx);
+  var cod=rows[idx].getAttribute('data-cod');
+  if(cod) quickProdHist(cod);
 }
 function loadFromHist(){var h=getHist().find(function(x){return x.id===viewingId;});if(!h)return;closeM('m-hview');applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
 function loadDirect(id){var h=getHist().find(function(x){return x.id===id;});if(!h)return;applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
@@ -2465,13 +2494,53 @@ function secTransf(hist){
 
 function secRanking(hist){
   var ps={};
-  hist.forEach(function(h){(h.products||[]).forEach(function(p){var k=p.codigo;if(!ps[k])ps[k]={cod:p.codigo,nm:p.nome,tot:0,cut:0,par:0,vc:0};ps[k].tot++;if(p.status==='cut'){ps[k].cut++;ps[k].vc+=parseMoney(p.vlTotal||'');}else if(p.status==='partial'){ps[k].par++;ps[k].vc+=(parseMoney(p.vlTotal||'')-(parseMoney(p.vlUnit||''))*(p.qtdEnviada||0));}});});
+  hist.forEach(function(h){(h.products||[]).forEach(function(p){
+    var k=p.codigo;
+    if(!ps[k])ps[k]={cod:p.codigo,nm:p.nome,tot:0,cut:0,par:0,vc:0,vs:0};
+    ps[k].tot++;
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    if(p.status==='cut'){ps[k].cut++;ps[k].vc+=vt;}
+    else if(p.status==='partial'){ps[k].par++;var vc=vt-(vu*(p.qtdEnviada||0));ps[k].vc+=vc;ps[k].vs+=(vt-vc);}
+    else if(p.status==='sent'){ps[k].vs+=vt;}
+  });});
   var arr=Object.values(ps).filter(function(p){return p.cut+p.par>0;}).sort(function(a,b){return(b.cut+b.par)-(a.cut+a.par);});
   if(!arr.length) return '<div style="margin-bottom:8px"><div class="sec-title">🏆 Ranking de Produtos com Mais Cortes</div><div style="text-align:center;padding:15px;color:#888;font-style:italic">Nenhum corte registrado.</div></div>';
   var mx=arr[0].cut+arr[0].par;
-  var html='<div style="margin-bottom:8px"><div class="sec-title">🏆 Ranking de Produtos com Mais Cortes</div>';
-  html+='<div class="tbl-wrap"><table><thead><tr><th class="ns" style="width:28px">#</th><th class="ns">Código</th><th class="ns">Produto</th><th class="ns" style="text-align:right">Total</th><th class="ns" style="text-align:right;color:#CC3300">Cortes</th><th class="ns" style="text-align:right;color:#AA6600">Parciais</th><th class="ns" style="text-align:right">% Corte</th><th class="ns" style="text-align:right">Vl. Corte</th><th class="ns">Frequência</th></tr></thead><tbody>';
-  arr.slice(0,50).forEach(function(p,i){var t=p.cut+p.par;var pp=p.tot?((t/p.tot)*100).toFixed(0):0;var bw=Math.round((t/mx)*100);var bg=i%2===0?'#FFFEF5':'#F5EDD8';html+='<tr style="background:'+bg+'"><td style="padding:3px 5px;font-weight:bold;color:#888;text-align:center">'+(i+1)+'</td><td style="padding:3px 5px;font-family:Courier New;font-size:10px;color:#003399">'+p.cod+'</td><td style="padding:3px 5px">'+p.nm+'</td><td style="padding:3px 5px;text-align:right">'+p.tot+'</td><td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">'+p.cut+'</td><td style="padding:3px 5px;text-align:right;color:#AA6600;font-weight:bold">'+p.par+'</td><td style="padding:3px 5px;text-align:right;font-weight:bold;color:'+(parseInt(pp)>50?'#CC0000':parseInt(pp)>25?'#AA6600':'#226600')+'">'+pp+'%</td><td style="padding:3px 5px;text-align:right;font-family:Courier New;font-size:10px;color:#CC0000">'+fmtMoney(p.vc)+'</td><td style="padding:3px 5px"><div style="background:#EEE;height:8px;border:1px solid #CCC"><div style="background:#CC3300;height:100%;width:'+bw+'%"></div></div></td></tr>';});
+  var html='<div style="margin-bottom:8px"><div class="sec-title">🏆 Ranking de Produtos com Mais Cortes <span style="font-size:10px;font-weight:normal;color:#664400">— clique em 🔍 ou pressione Enter na linha para ver o histórico completo</span></div>';
+  html+='<div class="tbl-wrap"><table><thead><tr>';
+  html+='<th class="ns" style="width:24px">#</th>';
+  html+='<th class="ns">Código</th>';
+  html+='<th class="ns">Produto</th>';
+  html+='<th class="ns" style="text-align:right">Total</th>';
+  html+='<th class="ns" style="text-align:right;color:#CC3300">✕ Cortes</th>';
+  html+='<th class="ns" style="text-align:right;color:#AA6600">~ Parciais</th>';
+  html+='<th class="ns" style="text-align:right">% Corte</th>';
+  html+='<th class="ns" style="text-align:right">Vl. Corte</th>';
+  html+='<th class="ns" style="text-align:right">Vl. Enviado</th>';
+  html+='<th class="ns">Freq.</th>';
+  html+='<th class="ns" style="width:30px"></th>';
+  html+='</tr></thead><tbody>';
+  arr.slice(0,50).forEach(function(p,i){
+    var t=p.cut+p.par;
+    var pp=p.tot?((t/p.tot)*100).toFixed(0):0;
+    var bw=Math.round((t/mx)*100);
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var codEsc=p.cod.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html+='<tr class="rank-row" style="background:'+bg+'" data-cod="'+codEsc+'">';
+    html+='<td style="padding:3px 5px;font-weight:bold;color:#888;text-align:center">'+(i+1)+'</td>';
+    html+='<td style="padding:3px 5px;font-family:Courier New;font-size:10px;color:#003399;cursor:pointer" onclick="rankOpenHist(\''+codEsc+'\')" title="Ver histórico">'+p.cod+'</td>';
+    html+='<td style="padding:3px 5px;cursor:pointer" onclick="rankOpenHist(\''+codEsc+'\')" title="Ver histórico">'+p.nm+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+p.tot+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">'+p.cut+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#AA6600;font-weight:bold">'+p.par+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-weight:bold;color:'+(parseInt(pp)>50?'#CC0000':parseInt(pp)>25?'#AA6600':'#226600')+'">'+pp+'%</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-size:10px;color:#CC0000">'+fmtMoney(p.vc)+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-size:10px;color:#006600">'+fmtMoney(p.vs)+'</td>';
+    html+='<td style="padding:3px 5px"><div style="background:#EEE;height:8px;border:1px solid #CCC"><div style="background:#CC3300;height:100%;width:'+bw+'%"></div></div></td>';
+    html+='<td style="padding:2px 3px"><button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF;font-size:9px" onclick="rankOpenHist(\''+codEsc+'\')" title="Ver histórico completo deste produto">🔍</button></td>';
+    html+='</tr>';
+  });
   html+='</tbody></table></div></div>';
   return html;
 }
@@ -2700,6 +2769,7 @@ document.addEventListener('keydown', function(e){
   if(e.key==='F7'){e.preventDefault();expPDF();return;}
   if(e.key==='F8'){e.preventDefault();saveOrc();return;}
   if(e.key==='F9'){e.preventDefault();openM('m-manual');return;}
+  if(e.key==='F10'){e.preventDefault();openProdHistStandalone();return;}
   if(e.key==='Escape'&&!inInput){resetAll();return;}
   if(inInput) return;
   if(e.key==='s'||e.key==='S'){quickSt('sent');return;}
@@ -2789,8 +2859,54 @@ function searchProdHist(){
   renderProdHistResult(_phRows);
 }
 
+// Open product history as standalone (from hf-bar button or F10)
+function openProdHistStandalone(){
+  document.getElementById('ph-cod').value = '';
+  document.getElementById('ph-nom').value = '';
+  document.getElementById('ph-result').innerHTML = '<div style="text-align:center;padding:12px;color:#888;font-style:italic">Informe o código ou nome do produto acima e clique em Buscar (ou Enter).</div>';
+  _phRows = [];
+  openM('m-prodhist');
+  setTimeout(function(){ document.getElementById('ph-cod').focus(); }, 100);
+}
+
+// Open product history from ranking table
+function rankOpenHist(cod){
+  document.getElementById('ph-cod').value = cod;
+  document.getElementById('ph-nom').value = '';
+  _phRows = getProdHistHtml(cod, '');
+  renderProdHistResult(_phRows);
+  openM('m-prodhist');
+}
+
+// Open an orc from within the product history modal
+function openOrcFromProdHist(hid){
+  closeM('m-prodhist');
+  viewHist(hid);
+}
+
+// Keyboard handler for viewHist modal (arrow keys + Enter)
+document.addEventListener('keydown', function(e){
+  var modal = document.getElementById('m-hview');
+  if(!modal || !modal.classList.contains('on')) return;
+  var rows = document.querySelectorAll('.mhv-row');
+  if(!rows.length) return;
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    hvSetRow(Math.min(_hvSelRow+1, rows.length-1));
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    hvSetRow(Math.max(_hvSelRow-1, 0));
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    if(_hvSelRow>=0 && rows[_hvSelRow]){
+      var cod=rows[_hvSelRow].getAttribute('data-cod');
+      if(cod) quickProdHist(cod);
+    }
+  }
+});
+
 function quickProdHist(cod){
-  closeM('m-hview');
+  // Keep m-hview open underneath, open prodhist on top
   document.getElementById('ph-cod').value = cod;
   document.getElementById('ph-nom').value = '';
   _phRows = getProdHistHtml(cod, '');
@@ -2813,9 +2929,7 @@ function renderProdHistResult(rows){
   }
   var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
   var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#888'};
-  // Summary for this product
-  var tot=rows.length, snt=0, cut=0, par=0;
-  var vlTot=0, vlCorte=0, vlSnt=0;
+  var tot=rows.length, snt=0, cut=0, par=0, vlTot=0, vlCorte=0, vlSnt=0;
   rows.forEach(function(r){
     var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
     var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
@@ -2826,20 +2940,20 @@ function renderProdHistResult(rows){
   });
   var pctSnt=(snt/tot*100).toFixed(1), pctCut=(cut/tot*100).toFixed(1),
       pctPar=(par/tot*100).toFixed(1), pctG=((cut+par)/tot*100).toFixed(1);
-  var nm = rows[0].nome;
   var html='<div style="background:#FFF8E0;border:1px solid #C09000;padding:8px;margin-bottom:8px;font-size:11px">';
-  html+='<b>'+rows[0].codigo+' — '+nm+'</b><br>';
+  html+='<b>'+rows[0].codigo+' — '+rows[0].nome+'</b><br>';
   html+='Aparece em <b>'+tot+'</b> orçamento(s) &nbsp;|&nbsp; ';
   html+='<span style="color:#006600;font-weight:bold">✅ Enviado: '+snt+'× ('+pctSnt+'%) — '+fmtMoney(vlSnt)+'</span> &nbsp;';
-  html+='<span style="color:#CC0000;font-weight:bold">✕ Corte Total: '+cut+'× ('+pctCut+'%) — '+fmtMoney(vlCorte)+'</span> &nbsp;';
+  html+='<span style="color:#CC0000;font-weight:bold">✕ Corte: '+cut+'× ('+pctCut+'%) — '+fmtMoney(vlCorte)+'</span> &nbsp;';
   html+='<span style="color:#AA6600;font-weight:bold">~ Parcial: '+par+'× ('+pctPar+'%)</span><br>';
-  html+='<b style="color:#AA0000">⚠ Corte Geral: '+pctG+'% &nbsp;|&nbsp; 💰 Total Orçado nesses pedidos: '+fmtMoney(vlTot)+'</b>';
+  html+='<b style="color:#AA0000">⚠ Corte Geral: '+pctG+'% &nbsp;|&nbsp; 💰 Total Orçado: '+fmtMoney(vlTot)+'</b>';
   html+='</div>';
+  html+='<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:4px">💡 Clique em qualquer linha para abrir o orçamento completo</div>';
   html+='<div class="tbl-wrap"><table style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
   html+='<th style="padding:3px 5px">Orç.</th><th>Filial</th><th>Data</th>';
   html+='<th>Un.</th><th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
   html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
-  html+='<th>Situação</th><th style="text-align:center">%</th>';
+  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
   html+='</tr></thead><tbody>';
   rows.forEach(function(r,i){
     var bg=i%2===0?'#FFFEF5':'#F5EDD8';
@@ -2848,8 +2962,11 @@ function renderProdHistResult(rows){
     var pct=r.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
             r.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
             r.status==='partial'?(r.qtdS?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(r.qtdE/r.qtdS*100)+'%</span>':'—'):'—';
-    html+='<tr style="background:'+bg+'">';
-    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold">'+r.orc+'</td>';
+    // Find the matching hist id for this orc number + filial
+    var histRef=getHist().find(function(h){return h.numero===r.orc&&h.filial===r.filial;});
+    var hid=histRef?histRef.id:'';
+    html+='<tr style="background:'+bg+';cursor:'+(hid?'pointer':'default')+'" '+(hid?'onclick="openOrcFromProdHist(\''+hid+'\')" title="Abrir orçamento '+r.orc+'"':'')+'>';
+    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;text-decoration:'+(hid?'underline':'none')+'">'+r.orc+'</td>';
     html+='<td style="padding:3px 5px;font-weight:bold;color:#AA6000">'+r.filial+'</td>';
     html+='<td style="padding:3px 5px">'+r.data+'</td>';
     html+='<td style="padding:3px 5px;text-align:center">'+r.unidade+'</td>';
@@ -2859,6 +2976,7 @@ function renderProdHistResult(rows){
     html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
     html+='<td style="padding:3px 5px;color:'+CLR[r.status]+';font-weight:bold">'+LBL[r.status]+'</td>';
     html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
+    html+='<td style="padding:2px 3px">'+(hid?'<button class="vbtn sm prim" style="font-size:9px" onclick="event.stopPropagation();openOrcFromProdHist(\''+hid+'\')" title="Abrir orçamento">📋</button>':'')+'</td>';
     html+='</tr>';
   });
   html+='</tbody></table></div>';
