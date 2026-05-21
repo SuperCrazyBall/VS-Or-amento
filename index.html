@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1683,7 +1683,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
   </div>
 </div>
 
-<div class="mov" id="m-prodhist">
+<div class="mov" id="m-prodhist" style="z-index:230">
   <div class="mwin wide">
     <div class="mhd">
       <span>🔍 Histórico do Produto</span>
@@ -1705,7 +1705,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
   </div>
 </div>
 
-<div class="mov" id="m-relcortes">
+<div class="mov" id="m-relcortes" style="z-index:210">
   <div class="mwin wide">
     <div class="mhd">
       <span>✂ Relatório Consolidado de Cortes</span>
@@ -2312,10 +2312,23 @@ function fillFils(){
   hist.forEach(function(h){if(h.filial)fs[h.filial]=1;});
   var o='<option value="">Todas as filiais</option>';
   Object.keys(fs).sort().forEach(function(f){o+='<option>'+f+'</option>';});
-  document.getElementById('hf-fil').innerHTML=o;
-  document.getElementById('af-fil').innerHTML=o;
-  var rcFil=document.getElementById('rc-fil');
-  if(rcFil) rcFil.innerHTML=o;
+
+  // Preservar seleção atual antes de reconstruir os selects
+  var hfFilEl  = document.getElementById('hf-fil');
+  var afFilEl  = document.getElementById('af-fil');
+  var rcFilEl  = document.getElementById('rc-fil');
+  var prevHf   = hfFilEl  ? hfFilEl.value  : '';
+  var prevAf   = afFilEl  ? afFilEl.value  : '';
+  var prevRc   = rcFilEl  ? rcFilEl.value  : '';
+
+  if(hfFilEl)  hfFilEl.innerHTML  = o;
+  if(afFilEl)  afFilEl.innerHTML  = o;
+  if(rcFilEl)  rcFilEl.innerHTML  = o;
+
+  // Restaurar seleção
+  if(hfFilEl  && prevHf)  hfFilEl.value  = prevHf;
+  if(afFilEl  && prevAf)  afFilEl.value  = prevAf;
+  if(rcFilEl  && prevRc)  rcFilEl.value  = prevRc;
 }
 
 function renderHist(){
