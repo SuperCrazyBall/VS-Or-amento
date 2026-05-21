@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1601,6 +1601,8 @@ tbody tr.row-p { background: #FFF0A0 !important; }
         <button class="vbtn" onclick="renderHist()">🔍 Buscar</button>
         <div class="asep"></div>
         <button class="vbtn" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF" onclick="openProdHistStandalone()" title="Histórico de Produto [F10]">🔍 Hist. Produto <span style="font-size:8px;opacity:.7">[F10]</span></button>
+        <div class="asep"></div>
+        <button class="vbtn" style="background:#FFEEDD;border-color:#FFF #CC4400 #CC4400 #FFF;color:#882200;font-weight:bold" onclick="openRelCortes()" title="Relatório consolidado de cortes por filial/período">✂ Rel. Cortes Consolidado</button>
         <span id="hcount" style="font-size:10px;font-weight:bold;color:#553300;margin-left:auto"></span>
         <button class="vbtn danger sm" onclick="clearHist()">🗑 Limpar tudo</button>
       </div>
@@ -1699,6 +1701,55 @@ tbody tr.row-p { background: #FFF0A0 !important; }
       <button class="vbtn prim" onclick="printProdHist()">🖨 Imprimir</button>
       <button class="vbtn" onclick="excelProdHist()">📥 Excel</button>
       <button class="vbtn" onclick="closeM('m-prodhist')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="mov" id="m-relcortes">
+  <div class="mwin wide">
+    <div class="mhd">
+      <span>✂ Relatório Consolidado de Cortes</span>
+      <button class="mclose" onclick="closeM('m-relcortes')">✕</button>
+    </div>
+    <div class="mbody">
+      <!-- Filtros -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:6px 0 10px;border-bottom:1px solid #C09000;margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:8.5px;font-weight:bold;color:#664400;text-transform:uppercase">Filial</span>
+          <select id="rc-fil" class="vs-sel" style="min-width:140px">
+            <option value="">Todas as filiais</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:8.5px;font-weight:bold;color:#664400;text-transform:uppercase">Período</span>
+          <select id="rc-per" class="vs-sel">
+            <option value="7">Últimos 7 dias</option>
+            <option value="15">Últimos 15 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="">Todo período</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:8.5px;font-weight:bold;color:#664400;text-transform:uppercase">Incluir</span>
+          <div style="display:flex;gap:8px;align-items:center;height:26px">
+            <label style="font-size:11px;font-weight:bold;display:flex;align-items:center;gap:3px;cursor:pointer">
+              <input type="checkbox" id="rc-inc-cut" checked> ✕ Corte Total
+            </label>
+            <label style="font-size:11px;font-weight:bold;display:flex;align-items:center;gap:3px;cursor:pointer">
+              <input type="checkbox" id="rc-inc-par" checked> ~ Parciais
+            </label>
+          </div>
+        </div>
+        <button class="vbtn prim" onclick="gerarRelCortes()" style="align-self:flex-end">✂ Gerar</button>
+      </div>
+      <!-- Resultado -->
+      <div id="rc-result"></div>
+    </div>
+    <div class="mfoot" id="rc-foot" style="display:none">
+      <button class="vbtn prim" onclick="printRelCortes()">🖨 Imprimir / PDF</button>
+      <button class="vbtn" onclick="excelRelCortes()">📥 Excel</button>
+      <button class="vbtn" onclick="closeM('m-relcortes')">Fechar</button>
     </div>
   </div>
 </div>
@@ -2263,6 +2314,8 @@ function fillFils(){
   Object.keys(fs).sort().forEach(function(f){o+='<option>'+f+'</option>';});
   document.getElementById('hf-fil').innerHTML=o;
   document.getElementById('af-fil').innerHTML=o;
+  var rcFil=document.getElementById('rc-fil');
+  if(rcFil) rcFil.innerHTML=o;
 }
 
 function renderHist(){
@@ -2745,11 +2798,16 @@ function cpCod(c){navigator.clipboard.writeText(c).then(function(){toast('📋 '
 // ABAS
 // ════════════════════════════════════════════════════════════
 function switchTab(id){
+  // GERENTE não acessa aba Pedido de Venda
+  if (CURRENT_USER && CURRENT_USER.role === 'viewer' && id === 'pane-import') {
+    id = 'pane-hist';
+  }
   document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('active');});
-  document.getElementById(id).classList.add('active');
+  var pane = document.getElementById(id);
+  if (pane) pane.classList.add('active');
   var map={'pane-import':'t-import','pane-hist':'t-hist','pane-ana':'t-ana'};
   document.querySelectorAll('.tab-btn').forEach(function(t){t.classList.remove('active');});
-  if(map[id]) document.getElementById(map[id]).classList.add('active');
+  if(map[id]){var tb=document.getElementById(map[id]);if(tb)tb.classList.add('active');}
   if(id==='pane-hist'){fillFils();renderHist();}
   if(id==='pane-ana'){fillFils();}
 }
@@ -3115,6 +3173,249 @@ function excelHistOrc(){
   XLSX.writeFile(wb,'Orc_'+h.numero+'_'+h.filial+'_'+today()+'.xlsx'); toast('📥 Exportado!','ok');
 }
 
+// ════════════════════════════════════════════════════════════
+// RELATÓRIO CONSOLIDADO DE CORTES (Histórico)
+// ════════════════════════════════════════════════════════════
+var _rcData = []; // dados consolidados do último relatório gerado
+
+function openRelCortes() {
+  // Garantir que o select de filial está populado
+  fillFils();
+  document.getElementById('rc-result').innerHTML =
+    '<div style="text-align:center;padding:18px;color:#888;font-style:italic">Configure os filtros acima e clique em <b>✂ Gerar</b>.</div>';
+  document.getElementById('rc-foot').style.display = 'none';
+  _rcData = [];
+  openM('m-relcortes');
+}
+
+function gerarRelCortes() {
+  var fil   = document.getElementById('rc-fil').value;
+  var per   = document.getElementById('rc-per').value;
+  var incCut = document.getElementById('rc-inc-cut').checked;
+  var incPar = document.getElementById('rc-inc-par').checked;
+
+  if (!incCut && !incPar) {
+    toast('Selecione ao menos um tipo de corte.', 'err'); return;
+  }
+
+  var hist = getHist();
+  var co   = per ? new Date(Date.now() - parseInt(per) * 86400000) : null;
+
+  // Filtrar orçamentos pelo período e filial
+  var orcsFiltrados = hist.filter(function(h) {
+    if (fil && h.filial !== fil) return false;
+    if (co && new Date(h.savedAt) < co) return false;
+    return true;
+  });
+
+  if (!orcsFiltrados.length) {
+    document.getElementById('rc-result').innerHTML =
+      '<div style="text-align:center;padding:18px;color:#888;font-style:italic">Nenhum orçamento encontrado para os filtros selecionados.</div>';
+    document.getElementById('rc-foot').style.display = 'none';
+    _rcData = [];
+    return;
+  }
+
+  // Consolidar produtos cortados — agrupando por código
+  var map = {}; // código → { ...produto, ocorrencias: [...] }
+
+  orcsFiltrados.forEach(function(h) {
+    (h.products || []).forEach(function(p) {
+      var isCut = p.status === 'cut';
+      var isPar = p.status === 'partial';
+      if (!((isCut && incCut) || (isPar && incPar))) return;
+
+      var k = p.codigo;
+      if (!map[k]) {
+        map[k] = {
+          codigo:   p.codigo,
+          nome:     p.nome,
+          unidade:  p.unidade,
+          ocorrencias: [],
+          totalCortes: 0,
+          totalParciais: 0,
+          vlCorteTotal: 0,
+        };
+      }
+      var vt = p.vlTotalNum || parseMoney(p.vlTotal || '');
+      var vu = p.vlUnitNum  || parseMoney(p.vlUnit  || '');
+      var vlCorte = isCut ? vt : (vt - vu * (p.qtdEnviada || 0));
+
+      map[k].ocorrencias.push({
+        orc:    h.numero,
+        filial: h.filial,
+        data:   h.data,
+        hid:    h.id,
+        qtdS:   p.qtdSolicitada,
+        qtdE:   p.qtdEnviada,
+        status: p.status,
+        vlUnit: vu,
+        vlTotal: vt,
+        vlCorte: vlCorte > 0 ? vlCorte : 0,
+      });
+
+      if (isCut) map[k].totalCortes++;
+      else       map[k].totalParciais++;
+      map[k].vlCorteTotal += (vlCorte > 0 ? vlCorte : 0);
+    });
+  });
+
+  _rcData = Object.values(map).sort(function(a, b) {
+    return (b.totalCortes + b.totalParciais) - (a.totalCortes + a.totalParciais);
+  });
+
+  if (!_rcData.length) {
+    document.getElementById('rc-result').innerHTML =
+      '<div style="text-align:center;padding:18px;color:#888;font-style:italic">Nenhum corte encontrado no período/filial selecionados.</div>';
+    document.getElementById('rc-foot').style.display = 'none';
+    return;
+  }
+
+  // Totais do relatório
+  var totalItens    = _rcData.length;
+  var totalOcorr    = _rcData.reduce(function(a, d) { return a + d.ocorrencias.length; }, 0);
+  var totalCortes   = _rcData.reduce(function(a, d) { return a + d.totalCortes; }, 0);
+  var totalParciais = _rcData.reduce(function(a, d) { return a + d.totalParciais; }, 0);
+  var vlTotalCorte  = _rcData.reduce(function(a, d) { return a + d.vlCorteTotal; }, 0);
+  var labelFil = fil || 'Todas as filiais';
+  var labelPer = per ? 'Últimos ' + per + ' dias' : 'Todo período';
+
+  // Construir HTML
+  var html = '<div style="background:#FFF8E0;border:1px solid #C09000;padding:8px 12px;margin-bottom:10px;font-size:11px">';
+  html += '<b style="font-size:12px">✂ Cortes Consolidados</b> &nbsp;|&nbsp; ';
+  html += '<b>Filial:</b> ' + labelFil + ' &nbsp;|&nbsp; <b>Período:</b> ' + labelPer + '<br>';
+  html += '<span style="color:#CC0000;font-weight:bold">✕ Produtos distintos com corte: ' + totalItens + '</span> &nbsp;|&nbsp; ';
+  html += '<span style="color:#AA6600;font-weight:bold">Total de ocorrências: ' + totalOcorr + '</span> &nbsp;|&nbsp; ';
+  html += '<span style="font-weight:bold">💰 Valor total em corte: ' + fmtMoney(vlTotalCorte) + '</span>';
+  html += '</div>';
+
+  html += '<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:6px">💡 Clique em qualquer produto para ver o histórico completo desse item.</div>';
+
+  html += '<div class="tbl-wrap"><table style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html += '<th style="padding:3px 5px;text-align:center;width:24px">#</th>';
+  html += '<th style="padding:3px 5px">Código</th>';
+  html += '<th style="padding:3px 5px">Produto</th>';
+  html += '<th style="padding:3px 5px;text-align:center">Un.</th>';
+  html += '<th style="padding:3px 5px;text-align:right">✕ Cortes</th>';
+  html += '<th style="padding:3px 5px;text-align:right">~ Parciais</th>';
+  html += '<th style="padding:3px 5px;text-align:right">Ocorrências</th>';
+  html += '<th style="padding:3px 5px;text-align:right">Vl. em Corte</th>';
+  html += '</tr></thead><tbody>';
+
+  _rcData.forEach(function(d, i) {
+    var bg = i % 2 === 0 ? '#FFFEF5' : '#F5EDD8';
+    var codEsc = d.codigo.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    html += '<tr style="background:' + bg + ';cursor:pointer" onclick="rcOpenProdHist(\'' + codEsc + '\')" title="Ver histórico completo deste produto">';
+    html += '<td style="padding:3px 5px;text-align:center;color:#888;font-weight:bold">' + (i+1) + '</td>';
+    html += '<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;text-decoration:underline">' + d.codigo + '</td>';
+    html += '<td style="padding:3px 5px">' + d.nome + '</td>';
+    html += '<td style="padding:3px 5px;text-align:center">' + d.unidade + '</td>';
+    html += '<td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">' + d.totalCortes + '</td>';
+    html += '<td style="padding:3px 5px;text-align:right;color:#AA6600;font-weight:bold">' + d.totalParciais + '</td>';
+    html += '<td style="padding:3px 5px;text-align:right">' + d.ocorrencias.length + '</td>';
+    html += '<td style="padding:3px 5px;text-align:right;font-family:Courier New;color:#CC0000;font-weight:bold">' + fmtMoney(d.vlCorteTotal) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('rc-result').innerHTML = html;
+  document.getElementById('rc-foot').style.display = 'flex';
+}
+
+// Abrir histórico do produto a partir do modal de cortes consolidados
+function rcOpenProdHist(cod) {
+  document.getElementById('ph-cod').value = cod;
+  document.getElementById('ph-nom').value = '';
+  _phRows = getProdHistHtml(cod, '');
+  renderProdHistResult(_phRows);
+  openM('m-prodhist');
+}
+
+// ── Impressão do Rel. Cortes Consolidado ──────────────────
+function printRelCortes() {
+  if (!_rcData.length) { toast('Gere o relatório primeiro.', 'err'); return; }
+  var fil  = document.getElementById('rc-fil').value  || 'Todas as filiais';
+  var per  = document.getElementById('rc-per').value;
+  var labelPer = per ? 'Últimos ' + per + ' dias' : 'Todo período';
+
+  var totalOcorr   = _rcData.reduce(function(a,d){return a+d.ocorrencias.length;},0);
+  var vlTotalCorte = _rcData.reduce(function(a,d){return a+d.vlCorteTotal;},0);
+
+  var trs = _rcData.map(function(d, i) {
+    return '<tr>'
+      + '<td align=center>' + (i+1) + '</td>'
+      + '<td style="font-family:Courier New;color:#003399">' + d.codigo + '</td>'
+      + '<td>' + d.nome + '</td>'
+      + '<td align=center>' + d.unidade + '</td>'
+      + '<td align=right style="color:#CC0000;font-weight:bold">' + d.totalCortes + '</td>'
+      + '<td align=right style="color:#AA6600;font-weight:bold">' + d.totalParciais + '</td>'
+      + '<td align=right>' + d.ocorrencias.length + '</td>'
+      + '<td align=right style="color:#CC0000;font-weight:bold">' + fmtMoney(d.vlCorteTotal) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var w = window.open('', '_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cortes Consolidados</title>'
+    + '<style>body{font-family:Arial,sans-serif;padding:16px;font-size:10px;color:#000}'
+    + '.brand{color:#CC7000;font-weight:bold;font-size:13px;font-style:italic}'
+    + 'h2{font-size:12px;font-weight:bold;margin:4px 0;font-style:italic}'
+    + '.sub{font-size:9px;color:#444;line-height:1.6;margin-bottom:8px;border-bottom:1px solid #CCC;padding-bottom:6px}'
+    + '.sum{background:#FFF8E0;border:1px solid #C09000;padding:6px;margin-bottom:8px;font-size:9.5px}'
+    + 'table{width:100%;border-collapse:collapse}'
+    + 'th{background:#CC6600;color:#FFF;padding:3px 4px;font-size:8.5px;font-style:italic;font-weight:bold;border:1px solid #AA4400}'
+    + 'td{padding:3px 4px;border:1px solid #DDD;font-size:9.5px}'
+    + 'tr:nth-child(even){background:#FFF8E7}'
+    + '</style></head><body>');
+  w.document.write('<div class="brand">comercial do norte — VSOrçamentos</div>');
+  w.document.write('<h2>✂ Relatório Consolidado de Cortes</h2>');
+  w.document.write('<div class="sub">Filial: <b>' + fil + '</b> &nbsp;|&nbsp; Período: <b>' + labelPer + '</b><br>Gerado: ' + new Date().toLocaleString('pt-BR') + '</div>');
+  w.document.write('<div class="sum">');
+  w.document.write('<b>Produtos distintos com corte:</b> ' + _rcData.length + ' &nbsp;|&nbsp; ');
+  w.document.write('<b>Total de ocorrências:</b> ' + totalOcorr + ' &nbsp;|&nbsp; ');
+  w.document.write('<b style="color:#CC0000">💰 Valor total em corte: ' + fmtMoney(vlTotalCorte) + '</b>');
+  w.document.write('</div>');
+  w.document.write('<table><thead><tr>'
+    + '<th>#</th><th>Código</th><th>Produto</th><th>Un.</th>'
+    + '<th>✕ Cortes</th><th>~ Parciais</th><th>Ocorrências</th><th>Vl. em Corte</th>'
+    + '</tr></thead><tbody>' + trs + '</tbody></table>');
+  w.document.write('</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 350);
+  toast('🖨 Imprimindo...', 'ok');
+}
+
+// ── Excel do Rel. Cortes Consolidado ─────────────────────
+function excelRelCortes() {
+  if (!_rcData.length) { toast('Gere o relatório primeiro.', 'err'); return; }
+  var fil      = document.getElementById('rc-fil').value  || 'Todas as filiais';
+  var per      = document.getElementById('rc-per').value;
+  var labelPer = per ? 'Últimos ' + per + ' dias' : 'Todo período';
+  var vlTotal  = _rcData.reduce(function(a,d){return a+d.vlCorteTotal;},0);
+
+  var data = [
+    ['RELATÓRIO CONSOLIDADO DE CORTES — Comercial do Norte'],
+    ['Filial: ' + fil + '  |  Período: ' + labelPer],
+    ['Gerado: ' + new Date().toLocaleString('pt-BR')],
+    [],
+    ['RESUMO'],
+    ['Produtos distintos com corte', _rcData.length],
+    ['Total de ocorrências', _rcData.reduce(function(a,d){return a+d.ocorrencias.length;},0)],
+    ['Valor total em corte', vlTotal],
+    [],
+    ['#', 'Código', 'Produto', 'Un.', '✕ Cortes Totais', '~ Parciais', 'Ocorrências', 'Vl. em Corte (R$)'],
+  ];
+  _rcData.forEach(function(d, i) {
+    data.push([i+1, d.codigo, d.nome, d.unidade, d.totalCortes, d.totalParciais, d.ocorrencias.length, d.vlCorteTotal]);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:4},{wch:18},{wch:44},{wch:8},{wch:14},{wch:12},{wch:14},{wch:18}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cortes Consolidados');
+  XLSX.writeFile(wb, 'CortesConsolidados_' + today() + '.xlsx');
+  toast('📥 Exportado!', 'ok');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE USUARIOS & SINCRONIZACAO — Comercial do Norte
 // Usuário TRANSFERENCIA (senha 574092): acesso total
@@ -3208,6 +3509,7 @@ var VIEWER_OK = {
 
 function applyPerms() {
   if (!CURRENT_USER || CURRENT_USER.role !== 'viewer') return;
+
   // Marcar botões restritos na toolbar com classe no-perm
   document.querySelectorAll('.tb-btn').forEach(function(btn) {
     var oc = btn.getAttribute('onclick') || '';
@@ -3216,6 +3518,14 @@ function applyPerms() {
     var allowed = /expExcel|expPDF|toggleRel|showCuts|buildAna|expAna/.test(txt);
     if (!allowed) btn.classList.add('no-perm');
   });
+
+  // GERENTE: ocultar aba "Pedido de Venda" e redirecionar para Histórico
+  var tabImport = document.getElementById('t-import');
+  var paneImport = document.getElementById('pane-import');
+  if (tabImport) tabImport.style.display = 'none';
+  if (paneImport) paneImport.style.display = 'none';
+  // Ativar aba Histórico como padrão
+  switchTab('pane-hist');
 }
 
 function checkPerm(action) {
