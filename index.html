@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Importação de Pedidos de Venda — Comercial do Norte</title>
+<title>Sistema Comercial</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -339,14 +339,68 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 .kpi-n.red { color: #CC0000; } .kpi-n.grn { color: #006600; } .kpi-n.gld { color: #AA6600; } .kpi-n.blu { color: #003399; }
 
 /* Modal */
+/* Overlay */
 .mov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; align-items: center; justify-content: center; }
-.mov.on { display: flex; }
-.mwin { background: #F5EDD8; border: 2px solid; border-color: #DDD #888 #888 #DDD; box-shadow: 4px 4px 10px rgba(0,0,0,.55); max-width: 500px; width: 92%; max-height: 88vh; overflow-y: auto; }
+.mov.on { display: flex; animation: movFadeIn .18s ease; }
+.mov.closing { animation: movFadeOut .15s ease forwards; }
+@keyframes movFadeIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes movFadeOut { from { opacity:1; } to { opacity:0; } }
+
+/* Janela modal — base */
+.mwin {
+  background: #F5EDD8; border: 2px solid; border-color: #DDD #888 #888 #DDD;
+  box-shadow: 4px 4px 10px rgba(0,0,0,.55);
+  max-width: 500px; width: 92%; max-height: 88vh; overflow-y: auto;
+  animation: mwinPop .18s ease;
+  position: relative;
+}
 .mwin.wide { max-width: 730px; }
-.mhd { background: linear-gradient(180deg, #1565C0 0%, #003399 100%); color: #FFF; font-size: 11px; font-weight: bold; font-style: italic; padding: 2px 8px; display: flex; align-items: center; justify-content: space-between; min-height: 20px; }
+@keyframes mwinPop { from { transform:scale(.96); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+/* Modo arrastável */
+.mwin.draggable {
+  position: fixed !important;
+  cursor: default;
+  max-width: none !important;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.mwin.draggable .mbody { overflow-y: auto; flex: 1; min-height: 0; }
+.mwin.draggable .mhd { cursor: grab; user-select: none; }
+.mwin.draggable .mhd:active { cursor: grabbing; }
+
+/* Modo fullscreen */
+.mwin.fullscreen {
+  position: fixed !important;
+  top: 4px !important; left: 4px !important;
+  width: calc(100vw - 8px) !important;
+  height: calc(100vh - 8px) !important;
+  max-width: none !important; max-height: none !important;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.mwin.fullscreen .mbody { overflow-y: auto; flex: 1; min-height: 0; }
+
+/* Botões de controle na mhd */
+.mhd { background: linear-gradient(180deg, #1565C0 0%, #003399 100%); color: #FFF;
+  font-size: 11px; font-weight: bold; font-style: italic;
+  padding: 2px 8px; display: flex; align-items: center; justify-content: space-between; min-height: 20px; }
+.mhd-btns { display:flex; gap:3px; align-items:center; flex-shrink:0; }
 .mclose { cursor: pointer; background: none; border: none; color: #FFF; font-size: 13px; font-weight: bold; padding: 0 2px; }
 .mclose:hover { color: #FFB0B0; }
+.mwin-btn { cursor:pointer; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+  color:#FFF; font-size:10px; padding:1px 5px; font-family:Arial,sans-serif; line-height:1.4; }
+.mwin-btn:hover { background:rgba(255,255,255,.3); }
 .mbody { padding: 9px; }
+
+/* Cabeçalho de tabela clicável para ordenação */
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { background: rgba(255,255,255,.18) !important; }
+th.sort-asc::after  { content:' ▲'; font-size:8px; }
+th.sort-desc::after { content:' ▼'; font-size:8px; }
+
+/* Código copiável */
+.cod-copy { cursor:pointer; }
+.cod-copy:hover { text-decoration:underline; color:#0022AA !important; }
 .mfoot { padding: 5px 9px; border-top: 1px solid #C09000; display: flex; gap: 4px; justify-content: flex-end; background: rgba(255,255,255,.2); }
 .fg { margin-bottom: 6px; }
 .fl { font-size: 8.5px; font-weight: bold; color: #664400; text-transform: uppercase; display: block; margin-bottom: 2px; }
@@ -932,14 +986,68 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 .kpi-n.red { color: #CC0000; } .kpi-n.grn { color: #006600; } .kpi-n.gld { color: #AA6600; } .kpi-n.blu { color: #003399; }
 
 /* Modal */
+/* Overlay */
 .mov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; align-items: center; justify-content: center; }
-.mov.on { display: flex; }
-.mwin { background: #F5EDD8; border: 2px solid; border-color: #DDD #888 #888 #DDD; box-shadow: 4px 4px 10px rgba(0,0,0,.55); max-width: 500px; width: 92%; max-height: 88vh; overflow-y: auto; }
+.mov.on { display: flex; animation: movFadeIn .18s ease; }
+.mov.closing { animation: movFadeOut .15s ease forwards; }
+@keyframes movFadeIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes movFadeOut { from { opacity:1; } to { opacity:0; } }
+
+/* Janela modal — base */
+.mwin {
+  background: #F5EDD8; border: 2px solid; border-color: #DDD #888 #888 #DDD;
+  box-shadow: 4px 4px 10px rgba(0,0,0,.55);
+  max-width: 500px; width: 92%; max-height: 88vh; overflow-y: auto;
+  animation: mwinPop .18s ease;
+  position: relative;
+}
 .mwin.wide { max-width: 730px; }
-.mhd { background: linear-gradient(180deg, #1565C0 0%, #003399 100%); color: #FFF; font-size: 11px; font-weight: bold; font-style: italic; padding: 2px 8px; display: flex; align-items: center; justify-content: space-between; min-height: 20px; }
+@keyframes mwinPop { from { transform:scale(.96); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+/* Modo arrastável */
+.mwin.draggable {
+  position: fixed !important;
+  cursor: default;
+  max-width: none !important;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.mwin.draggable .mbody { overflow-y: auto; flex: 1; min-height: 0; }
+.mwin.draggable .mhd { cursor: grab; user-select: none; }
+.mwin.draggable .mhd:active { cursor: grabbing; }
+
+/* Modo fullscreen */
+.mwin.fullscreen {
+  position: fixed !important;
+  top: 4px !important; left: 4px !important;
+  width: calc(100vw - 8px) !important;
+  height: calc(100vh - 8px) !important;
+  max-width: none !important; max-height: none !important;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.mwin.fullscreen .mbody { overflow-y: auto; flex: 1; min-height: 0; }
+
+/* Botões de controle na mhd */
+.mhd { background: linear-gradient(180deg, #1565C0 0%, #003399 100%); color: #FFF;
+  font-size: 11px; font-weight: bold; font-style: italic;
+  padding: 2px 8px; display: flex; align-items: center; justify-content: space-between; min-height: 20px; }
+.mhd-btns { display:flex; gap:3px; align-items:center; flex-shrink:0; }
 .mclose { cursor: pointer; background: none; border: none; color: #FFF; font-size: 13px; font-weight: bold; padding: 0 2px; }
 .mclose:hover { color: #FFB0B0; }
+.mwin-btn { cursor:pointer; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+  color:#FFF; font-size:10px; padding:1px 5px; font-family:Arial,sans-serif; line-height:1.4; }
+.mwin-btn:hover { background:rgba(255,255,255,.3); }
 .mbody { padding: 9px; }
+
+/* Cabeçalho de tabela clicável para ordenação */
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { background: rgba(255,255,255,.18) !important; }
+th.sort-asc::after  { content:' ▲'; font-size:8px; }
+th.sort-desc::after { content:' ▼'; font-size:8px; }
+
+/* Código copiável */
+.cod-copy { cursor:pointer; }
+.cod-copy:hover { text-decoration:underline; color:#0022AA !important; }
 .mfoot { padding: 5px 9px; border-top: 1px solid #C09000; display: flex; gap: 4px; justify-content: flex-end; background: rgba(255,255,255,.2); }
 .fg { margin-bottom: 6px; }
 .fl { font-size: 8.5px; font-weight: bold; color: #664400; text-transform: uppercase; display: block; margin-bottom: 2px; }
@@ -1306,7 +1414,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 <!-- ═══ PERMISSÃO NEGADA ═════════════════════════════════════ -->
 <div id="perm-modal">
   <div id="perm-win">
-    <div id="perm-hd"><span>&#9888; Aviso do Sistema</span><button class="mclose" onclick="closePerm()">&#10005;</button></div>
+    <div id="perm-hd"><span>&#9888; Aviso do Sistema</span><div class="mhd-btns"><button class="mclose" onclick="closePerm()">&#10005;</button></div></div>
     <div id="perm-body"><div class="perm-ico">&#9888;&#65039;</div><div class="perm-msg">Usu&#225;rio sem permiss&#227;o<br>para esta op&#231;&#227;o.</div></div>
     <div id="perm-foot"><button class="vbtn prim" onclick="closePerm()">OK</button></div>
   </div>
@@ -1650,7 +1758,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 <!-- MODAIS -->
 <div class="mov" id="m-error">
   <div class="mwin">
-    <div class="mhd"><span>⚠ Erro ao processar</span><button class="mclose" onclick="closeM('m-error')">✕</button></div>
+    <div class="mhd" id="m-error-hd"><span style="flex:1">⚠ Erro ao processar</span><div class="mhd-btns"><button class="mwin-btn" onclick="toggleDrag('m-error')" title="Mover janela">⊹</button><button class="mwin-btn" onclick="toggleFull('m-error')" title="Tela cheia">⛶</button><button class="mclose" onclick="closeM('m-error')" title="Fechar [Esc]">✕</button></div></div>
     <div class="mbody"><div id="m-err-txt" style="color:#CC0000;font-weight:bold;margin-bottom:6px"></div><div style="font-size:10px;color:#555">O PDF precisa ter texto selecionável. Imagens são processadas via IA.</div></div>
     <div class="mfoot"><button class="vbtn" onclick="closeM('m-error');newImport()">Tentar outro</button><button class="vbtn prim" onclick="closeM('m-error');openM('m-manual')">Inserir manual</button></div>
   </div>
@@ -1658,7 +1766,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 
 <div class="mov" id="m-manual">
   <div class="mwin">
-    <div class="mhd"><span>✏ Adicionar Produto</span><button class="mclose" onclick="closeM('m-manual')">✕</button></div>
+    <div class="mhd" id="m-manual-hd"><span style="flex:1">✏ Adicionar Produto</span><div class="mhd-btns"><button class="mwin-btn" onclick="toggleDrag('m-manual')" title="Mover janela">⊹</button><button class="mwin-btn" onclick="toggleFull('m-manual')" title="Tela cheia">⛶</button><button class="mclose" onclick="closeM('m-manual')" title="Fechar [Esc]">✕</button></div></div>
     <div class="mbody">
       <div class="fg2"><div class="fg"><label class="fl">Código</label><input id="m-cod" class="ei" style="width:100%" placeholder="Ex: 48 ou 789..."></div><div class="fg"><label class="fl">Unidade</label><input id="m-und" class="ei" style="width:100%" placeholder="CX, FD, MIL, KG..."></div></div>
       <div class="fg"><label class="fl">Descrição do Produto</label><input id="m-nom" class="ei" style="width:100%" placeholder="Nome completo"></div>
@@ -1670,7 +1778,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 
 <div class="mov" id="m-hview">
   <div class="mwin wide">
-    <div class="mhd"><span id="mhv-title">Orçamento</span><button class="mclose" onclick="closeM('m-hview')">✕</button></div>
+    <div class="mhd" id="m-hview-hd"><span style="flex:1"><span id="mhv-title">Orçamento</span></span><div class="mhd-btns"><button class="mwin-btn" onclick="toggleDrag('m-hview')" title="Mover janela">⊹</button><button class="mwin-btn" onclick="toggleFull('m-hview')" title="Tela cheia">⛶</button><button class="mclose" onclick="closeM('m-hview')" title="Fechar [Esc]">✕</button></div></div>
     <div class="mbody"><div id="mhv-body"></div></div>
     <div class="mfoot" style="flex-wrap:wrap;gap:4px">
       <button class="vbtn" onclick="loadFromHist()">📋 Carregar para edição</button>
@@ -1685,10 +1793,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 
 <div class="mov" id="m-prodhist" style="z-index:230">
   <div class="mwin wide">
-    <div class="mhd">
-      <span>🔍 Histórico do Produto</span>
-      <button class="mclose" onclick="closeM('m-prodhist')">✕</button>
-    </div>
+    <div class="mhd" id="m-prodhist-hd"><span style="flex:1">🔍 Histórico do Produto</span><div class="mhd-btns"><button class="mwin-btn" onclick="toggleDrag('m-prodhist')" title="Mover janela">⊹</button><button class="mwin-btn" onclick="toggleFull('m-prodhist')" title="Tela cheia">⛶</button><button class="mclose" onclick="closeM('m-prodhist')" title="Fechar [Esc]">✕</button></div></div>
     <div class="mbody">
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
         <input id="ph-cod" class="vi" placeholder="Código do produto..." style="min-width:140px" onkeydown="if(event.key==='Enter')searchProdHist()">
@@ -1707,10 +1812,7 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 
 <div class="mov" id="m-relcortes" style="z-index:210">
   <div class="mwin wide">
-    <div class="mhd">
-      <span>✂ Relatório Consolidado de Cortes</span>
-      <button class="mclose" onclick="closeM('m-relcortes')">✕</button>
-    </div>
+    <div class="mhd" id="m-relcortes-hd"><span style="flex:1">✂ Relatório Consolidado de Cortes</span><div class="mhd-btns"><button class="mwin-btn" onclick="toggleDrag('m-relcortes')" title="Mover janela">⊹</button><button class="mwin-btn" onclick="toggleFull('m-relcortes')" title="Tela cheia">⛶</button><button class="mclose" onclick="closeM('m-relcortes')" title="Fechar [Esc]">✕</button></div></div>
     <div class="mbody">
       <!-- Filtros -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:6px 0 10px;border-bottom:1px solid #C09000;margin-bottom:10px">
@@ -1796,8 +1898,7 @@ function getHist() { try { return JSON.parse(localStorage.getItem(STORE_KEY)||'[
 function setHist(h) { try { localStorage.setItem(STORE_KEY, JSON.stringify(h)); } catch(e) { toast('Armazenamento cheio!','err'); } }
 function show(id) { document.getElementById(id).style.display='block'; }
 function hide(id) { document.getElementById(id).style.display='none'; }
-function openM(id) { document.getElementById(id).classList.add('on'); }
-function closeM(id) { document.getElementById(id).classList.remove('on'); }
+// openM/closeM defined below in window system
 function setStep(m) { document.getElementById('proc-s').textContent = m; }
 function setProgress(v) { document.getElementById('prog-b').style.width = v+'%'; }
 function setStatus(m) { document.getElementById('seg-msg').textContent = m; }
@@ -2295,14 +2396,19 @@ var viewingId=null;
 function saveOrc(){
   if(!products.length){toast('Nenhum orçamento para salvar.','err');return;}
   var hist=getHist();
-  var rec={id:Date.now().toString(),savedAt:new Date().toISOString(),
-    numero:orderInfo.numero,filial:orderInfo.filial,gestor:orderInfo.gestor,data:orderInfo.data,
-    cnpj:orderInfo.cnpj,cep:orderInfo.cep,fone:orderInfo.fone,email:orderInfo.email,
-    endereco:orderInfo.endereco,validade:orderInfo.validade,total:orderInfo.total,
+  var now=new Date().toISOString();
+  var ex=hist.findIndex(function(h){return h.numero===orderInfo.numero&&h.filial===orderInfo.filial;});
+  var rec={
+    id: ex>=0 ? hist[ex].id : Date.now().toString(),
+    // createdAt é SEMPRE preservado do original — nunca muda após criação
+    createdAt: ex>=0 && hist[ex].createdAt ? hist[ex].createdAt : now,
+    savedAt: now,       // data de modificação (atualizada a cada save)
+    numero:orderInfo.numero, filial:orderInfo.filial, gestor:orderInfo.gestor, data:orderInfo.data,
+    cnpj:orderInfo.cnpj, cep:orderInfo.cep, fone:orderInfo.fone, email:orderInfo.email,
+    endereco:orderInfo.endereco, validade:orderInfo.validade, total:orderInfo.total,
     products:products.map(function(p){return Object.assign({},p);})
   };
-  var ex=hist.findIndex(function(h){return h.numero===orderInfo.numero&&h.filial===orderInfo.filial;});
-  if(ex>=0){rec.id=hist[ex].id;hist[ex]=rec;toast('✔ Orçamento atualizado no histórico!','ok');}
+  if(ex>=0){hist[ex]=rec;toast('✔ Orçamento atualizado no histórico!','ok');}
   else{hist.unshift(rec);toast('✔ Orçamento salvo no histórico!','ok');}
   setHist(hist); fillFils();
 }
@@ -2351,11 +2457,17 @@ function renderHist(){
     var cut=prods.filter(function(p){return p.status==='cut';}).length;
     var par=prods.filter(function(p){return p.status==='partial';}).length;
     var pct=prods.length?Math.round(((cut+par)/prods.length)*100):0;
-    var sv=new Date(h.savedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    var dtOpts={day:'2-digit',month:'2-digit',year:'numeric'};
+    var svCreated=new Date(h.createdAt||h.savedAt).toLocaleDateString('pt-BR',dtOpts);
+    var svMod=new Date(h.savedAt).toLocaleDateString('pt-BR',dtOpts);
+    var svModTime=new Date(h.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    var modStr = (h.createdAt && h.createdAt!==h.savedAt)
+      ? ' | <span title="Última modificação" style="color:#AA5500">✏ Mod: '+svMod+' '+svModTime+'</span>'
+      : '';
     html+='<div class="hcard" onclick="viewHist(\''+h.id+'\')">';
     html+='<span class="hnum">Nº '+h.numero+'</span>';
     html+='<span class="hfil">'+h.filial+'</span>';
-    html+='<span class="hinfo">Vendedor: '+h.gestor+' | Data: '+h.data+' | '+prods.length+' itens | Salvo: '+sv+'</span>';
+    html+='<span class="hinfo">Vendedor: '+h.gestor+' | Data: '+h.data+' | '+prods.length+' itens | <span title="Data de entrada no sistema">📥 '+svCreated+'</span>'+modStr+'</span>';
     html+='<div class="hstats">';
     if(snt)html+='<span class="hm hms">✓'+snt+'</span>';
     if(par)html+='<span class="hm hmp">~'+par+'</span>';
@@ -2385,10 +2497,15 @@ function viewHist(id){
   html+=buildSummaryHTML(s,true,true);
   html+='<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:4px">💡 Use ↑↓ para navegar · Enter ou 🔍 para ver histórico do produto · Clique no produto para abrir</div>';
   html+='<table id="mhv-tbl" style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
-  html+='<th style="padding:3px 5px;text-align:left">Código</th><th style="padding:3px 5px;text-align:left">Produto</th><th>Un.</th>';
-  html+='<th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
-  html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
-  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
+  html+='<th class="sortable" onclick="mhvSort(this,\'codigo\')">Código</th>';
+  html+='<th class="sortable" onclick="mhvSort(this,\'nome\')">Produto</th>';
+  html+='<th class="sortable" onclick="mhvSort(this,\'unidade\')">Un.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="mhvSort(this,\'qtdSolicitada\')">Qtd.S.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="mhvSort(this,\'qtdEnviada\')">Qtd.E.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="mhvSort(this,\'vlUnitNum\')">Vl.Unit.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="mhvSort(this,\'vlTotalNum\')">Vl.Total</th>';
+  html+='<th class="sortable" onclick="mhvSort(this,\'status\')">Situação</th>';
+  html+='<th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
   html+='</tr></thead><tbody>';
   prods.forEach(function(p,i){
     var bg=i%2===0?'#FFFEF5':'#F5EDD8';
@@ -2400,7 +2517,7 @@ function viewHist(id){
     var codEsc=p.codigo.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     html+='<tr class="mhv-row" data-idx="'+i+'" data-cod="'+codEsc+'" style="background:'+bg+';cursor:pointer" ';
     html+='onclick="hvRowClick('+i+')" title="Clique para ver histórico deste produto">';
-    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px">'+p.codigo+'</td>';
+    html+='<td class="cod-copy" style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;cursor:pointer" onclick="event.stopPropagation();copyCod(\''+p.codigo+'\')" title="Clique para copiar código">'+p.codigo+'</td>';
     html+='<td style="padding:3px 5px">'+p.nome+'</td>';
     html+='<td style="padding:3px 5px;text-align:center">'+p.unidade+'</td>';
     html+='<td style="padding:3px 5px;text-align:right">'+p.qtdSolicitada+'</td>';
@@ -2951,7 +3068,9 @@ function rankOpenHist(cod){
 
 // Open an orc from within the product history modal
 function openOrcFromProdHist(hid){
-  closeM('m-prodhist');
+  // Keep prodhist open, open m-hview on top with higher z-index
+  var el = document.getElementById('m-hview');
+  if(el) el.style.zIndex = '240';
   viewHist(hid);
 }
 
@@ -3012,7 +3131,7 @@ function renderProdHistResult(rows){
   var pctSnt=(snt/tot*100).toFixed(1), pctCut=(cut/tot*100).toFixed(1),
       pctPar=(par/tot*100).toFixed(1), pctG=((cut+par)/tot*100).toFixed(1);
   var html='<div style="background:#FFF8E0;border:1px solid #C09000;padding:8px;margin-bottom:8px;font-size:11px">';
-  html+='<b>'+rows[0].codigo+' — '+rows[0].nome+'</b><br>';
+  html+='<b><span class="cod-copy" style="font-family:Courier New;color:#003399;cursor:pointer" onclick="copyCod(\''+rows[0].codigo+'\')" title="Clique para copiar código">'+rows[0].codigo+'</span> — '+rows[0].nome+'</b><br>';
   html+='Aparece em <b>'+tot+'</b> orçamento(s) &nbsp;|&nbsp; ';
   html+='<span style="color:#006600;font-weight:bold">✅ Enviado: '+snt+'× ('+pctSnt+'%) — '+fmtMoney(vlSnt)+'</span> &nbsp;';
   html+='<span style="color:#CC0000;font-weight:bold">✕ Corte: '+cut+'× ('+pctCut+'%) — '+fmtMoney(vlCorte)+'</span> &nbsp;';
@@ -3020,11 +3139,17 @@ function renderProdHistResult(rows){
   html+='<b style="color:#AA0000">⚠ Corte Geral: '+pctG+'% &nbsp;|&nbsp; 💰 Total Orçado: '+fmtMoney(vlTot)+'</b>';
   html+='</div>';
   html+='<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:4px">💡 Clique em qualquer linha para abrir o orçamento completo</div>';
-  html+='<div class="tbl-wrap"><table style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
-  html+='<th style="padding:3px 5px">Orç.</th><th>Filial</th><th>Data</th>';
-  html+='<th>Un.</th><th style="text-align:right">Qtd.S.</th><th style="text-align:right">Qtd.E.</th>';
-  html+='<th style="text-align:right">Vl.Unit.</th><th style="text-align:right">Vl.Total</th>';
-  html+='<th>Situação</th><th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
+  html+='<div class="tbl-wrap"><table id="ph-tbl" style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html+='<th class="sortable" onclick="phSort(this,\'orc\')">Orç.</th>';
+  html+='<th class="sortable" onclick="phSort(this,\'filial\')">Filial</th>';
+  html+='<th class="sortable" onclick="phSort(this,\'data\')">Data</th>';
+  html+='<th>Un.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="phSort(this,\'qtdS\')">Qtd.S.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="phSort(this,\'qtdE\')">Qtd.E.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="phSort(this,\'vlUnitNum\')">Vl.Unit.</th>';
+  html+='<th class="sortable" style="text-align:right" onclick="phSort(this,\'vlTotalNum\')">Vl.Total</th>';
+  html+='<th class="sortable" onclick="phSort(this,\'status\')">Situação</th>';
+  html+='<th style="text-align:center">%</th><th class="ns" style="width:30px"></th>';
   html+='</tr></thead><tbody>';
   rows.forEach(function(r,i){
     var bg=i%2===0?'#FFFEF5':'#F5EDD8';
@@ -3304,15 +3429,15 @@ function gerarRelCortes() {
 
   html += '<div style="font-size:9.5px;color:#664400;font-style:italic;margin-bottom:6px">💡 Clique em qualquer produto para ver o histórico completo desse item.</div>';
 
-  html += '<div class="tbl-wrap"><table style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
+  html += '<div class="tbl-wrap"><table id="rc-tbl" style="font-size:11px"><thead><tr style="background:#CC6600;color:#FFF">';
   html += '<th style="padding:3px 5px;text-align:center;width:24px">#</th>';
-  html += '<th style="padding:3px 5px">Código</th>';
-  html += '<th style="padding:3px 5px">Produto</th>';
-  html += '<th style="padding:3px 5px;text-align:center">Un.</th>';
-  html += '<th style="padding:3px 5px;text-align:right">✕ Cortes</th>';
-  html += '<th style="padding:3px 5px;text-align:right">~ Parciais</th>';
-  html += '<th style="padding:3px 5px;text-align:right">Ocorrências</th>';
-  html += '<th style="padding:3px 5px;text-align:right">Vl. em Corte</th>';
+  html += '<th class="sortable" onclick="rcSort(this,\'codigo\')">Código</th>';
+  html += '<th class="sortable" onclick="rcSort(this,\'nome\')">Produto</th>';
+  html += '<th style="text-align:center">Un.</th>';
+  html += '<th class="sortable" style="text-align:right" onclick="rcSort(this,\'totalCortes\')">✕ Cortes</th>';
+  html += '<th class="sortable" style="text-align:right" onclick="rcSort(this,\'totalParciais\')">~ Parciais</th>';
+  html += '<th class="sortable" style="text-align:right" onclick="rcSort(this,\'ocorrencias\')">Ocorrências</th>';
+  html += '<th class="sortable" style="text-align:right" onclick="rcSort(this,\'vlCorteTotal\')">Vl. em Corte</th>';
   html += '</tr></thead><tbody>';
 
   _rcData.forEach(function(d, i) {
@@ -3320,7 +3445,7 @@ function gerarRelCortes() {
     var codEsc = d.codigo.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     html += '<tr style="background:' + bg + ';cursor:pointer" onclick="rcOpenProdHist(\'' + codEsc + '\')" title="Ver histórico completo deste produto">';
     html += '<td style="padding:3px 5px;text-align:center;color:#888;font-weight:bold">' + (i+1) + '</td>';
-    html += '<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;text-decoration:underline">' + d.codigo + '</td>';
+    html += '<td class="cod-copy" style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;cursor:pointer" onclick="event.stopPropagation();copyCod(\''+d.codigo+'\')" title="Clique para copiar código">' + d.codigo + '</td>';
     html += '<td style="padding:3px 5px">' + d.nome + '</td>';
     html += '<td style="padding:3px 5px;text-align:center">' + d.unidade + '</td>';
     html += '<td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">' + d.totalCortes + '</td>';
@@ -3428,6 +3553,305 @@ function excelRelCortes() {
   XLSX.writeFile(wb, 'CortesConsolidados_' + today() + '.xlsx');
   toast('📥 Exportado!', 'ok');
 }
+
+
+// ════════════════════════════════════════════════════════════
+// SISTEMA DE JANELAS FLUTUANTES — drag, fullscreen, fade, ESC
+// ════════════════════════════════════════════════════════════
+
+// Estado das janelas
+var _winState = {};
+
+// openM com fade-in
+function openM(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('closing');
+  el.classList.add('on');
+  // Elevar z-index dinâmico para sempre ficar na frente
+  var base = parseInt(el.style.zIndex) || 200;
+  el.style.zIndex = Math.max(base, _getTopZ() + 1);
+}
+
+// closeM com fade-out
+function closeM(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('closing');
+  setTimeout(function() {
+    el.classList.remove('on');
+    el.classList.remove('closing');
+    // Resetar z-index de m-hview após fechar
+    if (id === 'm-hview') el.style.zIndex = '';
+  }, 140);
+}
+
+// Fechar com confirmação (janelas importantes)
+var _CONFIRM_MODALS = { 'm-hview': 'Fechar o orçamento sem salvar?' };
+function closeMSafe(id) {
+  if (_CONFIRM_MODALS[id]) {
+    if (!confirm(_CONFIRM_MODALS[id])) return;
+  }
+  closeM(id);
+}
+
+// Retorna o maior z-index atual entre modais abertos
+function _getTopZ() {
+  var top = 200;
+  document.querySelectorAll('.mov.on').forEach(function(el) {
+    var z = parseInt(el.style.zIndex) || 200;
+    if (z > top) top = z;
+  });
+  return top;
+}
+
+// ESC fecha o modal mais recente (maior z-index)
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  // Não interferir com inputs
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  var topEl = null, topZ = 0;
+  document.querySelectorAll('.mov.on').forEach(function(el) {
+    var z = parseInt(el.style.zIndex) || 200;
+    if (z > topZ) { topZ = z; topEl = el; }
+  });
+  if (topEl) {
+    var id = topEl.id;
+    if (_CONFIRM_MODALS[id]) { closeMSafe(id); }
+    else closeM(id);
+  }
+});
+
+// Toggle arrastar janela
+function toggleDrag(id) {
+  var overlay = document.getElementById(id);
+  var win = overlay ? overlay.querySelector('.mwin') : null;
+  if (!win) return;
+  if (win.classList.contains('fullscreen')) return; // não arrastar em fullscreen
+  if (win.classList.contains('draggable')) {
+    // Desativar drag — voltar ao centro
+    win.classList.remove('draggable');
+    win.style.left = ''; win.style.top = ''; win.style.width = ''; win.style.height = '';
+    _winState[id] = null;
+  } else {
+    // Ativar drag — posicionar no centro da tela
+    win.classList.add('draggable');
+    var rect = win.getBoundingClientRect();
+    win.style.left = rect.left + 'px';
+    win.style.top  = rect.top  + 'px';
+    win.style.width = rect.width + 'px';
+    _makeDraggable(id, win);
+  }
+}
+
+function _makeDraggable(id, win) {
+  var hd = win.querySelector('.mhd');
+  if (!hd || hd._dragBound) return;
+  hd._dragBound = true;
+  var startX, startY, startL, startT;
+  hd.addEventListener('mousedown', function(e) {
+    if (e.target.closest('button')) return;
+    startX = e.clientX; startY = e.clientY;
+    startL = parseInt(win.style.left) || 0;
+    startT = parseInt(win.style.top)  || 0;
+    // Raise z-index of overlay
+    var overlay = document.getElementById(id);
+    if (overlay) overlay.style.zIndex = _getTopZ() + 1;
+    function onMove(e2) {
+      win.style.left = (startL + e2.clientX - startX) + 'px';
+      win.style.top  = (startT + e2.clientY - startY) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// Toggle fullscreen
+function toggleFull(id) {
+  var overlay = document.getElementById(id);
+  var win = overlay ? overlay.querySelector('.mwin') : null;
+  if (!win) return;
+  if (win.classList.contains('fullscreen')) {
+    win.classList.remove('fullscreen');
+    win.classList.remove('draggable');
+    win.style.left = ''; win.style.top = ''; win.style.width = ''; win.style.height = '';
+  } else {
+    win.classList.remove('draggable');
+    win.classList.add('fullscreen');
+  }
+}
+
+// ── Copiar código ──────────────────────────────────────────
+function copyCod(cod) {
+  navigator.clipboard.writeText(cod).then(function() {
+    toast('📋 Código copiado: ' + cod, 'ok');
+  }).catch(function() {
+    // Fallback para navegadores sem clipboard API
+    var ta = document.createElement('textarea');
+    ta.value = cod; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('📋 Código copiado: ' + cod, 'ok');
+  });
+}
+
+// ── Ordenação de tabelas inline (não afeta impressão/Excel) ─
+var _mhvSortFld = null, _mhvSortAsc = true;
+var _mhvProds = [];  // cópia local dos produtos para ordenar sem afetar array global
+
+function mhvSort(th, field) {
+  // Descobrir produtos da tabela atual
+  var h = getHist().find(function(x){ return x.id === viewingId; });
+  if (!h) return;
+  if (_mhvSortFld === field) { _mhvSortAsc = !_mhvSortAsc; }
+  else { _mhvSortFld = field; _mhvSortAsc = true; }
+  // Atualizar visual dos headers
+  document.querySelectorAll('#mhv-tbl th').forEach(function(t) {
+    t.classList.remove('sort-asc','sort-desc');
+  });
+  th.classList.add(_mhvSortAsc ? 'sort-asc' : 'sort-desc');
+  // Ordenar e re-renderizar só o tbody
+  var prods = (h.products||[]).slice().sort(function(a,b) {
+    var va = a[field], vb = b[field];
+    if (field === 'vlUnitNum' || field === 'vlTotalNum' || field === 'qtdSolicitada' || field === 'qtdEnviada') {
+      va = parseFloat(va)||0; vb = parseFloat(vb)||0;
+      return _mhvSortAsc ? va-vb : vb-va;
+    }
+    va = String(va||'').toLowerCase(); vb = String(vb||'').toLowerCase();
+    return _mhvSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  _renderMhvTbody(prods);
+}
+
+function _renderMhvTbody(prods) {
+  var tbody = document.querySelector('#mhv-tbl tbody');
+  if (!tbody) return;
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#888'};
+  var html = '';
+  prods.forEach(function(p,i){
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var vu=p.vlUnitNum||parseMoney(p.vlUnit||'');
+    var vt=p.vlTotalNum||parseMoney(p.vlTotal||'');
+    var pct=p.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
+            p.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
+            p.status==='partial'?(p.qtdSolicitada?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(p.qtdEnviada/p.qtdSolicitada*100)+'%</span>':'—'):'—';
+    var codEsc=p.codigo.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html+='<tr class="mhv-row" data-idx="'+i+'" data-cod="'+codEsc+'" style="background:'+bg+';cursor:pointer" ';
+    html+='onclick="hvRowClick('+i+')" title="Clique para ver histórico deste produto">';
+    html+='<td class="cod-copy" style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;cursor:pointer" onclick="event.stopPropagation();copyCod(\''+codEsc+'\')" title="Clique para copiar código">'+p.codigo+'</td>';
+    html+='<td style="padding:3px 5px">'+p.nome+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+p.unidade+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+p.qtdSolicitada+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+p.qtdEnviada+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New">'+(vu>0?fmtMoney(vu):'—')+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
+    html+='<td style="padding:3px 5px;color:'+CLR[p.status]+';font-weight:bold">'+LBL[p.status]+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
+    html+='<td style="padding:2px 3px"><button class="vbtn sm" style="background:#E0D0FF;border-color:#FFF #6644AA #6644AA #FFF;font-size:9px" onclick="event.stopPropagation();quickProdHist(\''+codEsc+'\')" title="Ver histórico deste produto">🔍</button></td>';
+    html+='</tr>';
+  });
+  tbody.innerHTML = html;
+  // Re-bind keyboard nav
+  _hvSelRow = -1;
+}
+
+// ── Sorting para tabela histórico do produto ───────────────
+var _phSortFld = null, _phSortAsc = true;
+var _phRowsSort = [];
+
+function phSort(th, field) {
+  if (!_phRows || !_phRows.length) return;
+  if (_phSortFld === field) { _phSortAsc = !_phSortAsc; }
+  else { _phSortFld = field; _phSortAsc = true; }
+  document.querySelectorAll('#ph-tbl th').forEach(function(t){ t.classList.remove('sort-asc','sort-desc'); });
+  th.classList.add(_phSortAsc ? 'sort-asc' : 'sort-desc');
+  var sorted = _phRows.slice().sort(function(a,b){
+    var va=a[field], vb=b[field];
+    if(field==='qtdS'||field==='qtdE'||field==='vlUnitNum'||field==='vlTotalNum'){
+      return _phSortAsc?(parseFloat(va)||0)-(parseFloat(vb)||0):(parseFloat(vb)||0)-(parseFloat(va)||0);
+    }
+    va=String(va||'').toLowerCase(); vb=String(vb||'').toLowerCase();
+    return _phSortAsc?va.localeCompare(vb):vb.localeCompare(va);
+  });
+  // Re-render só o tbody
+  var tbody = document.querySelector('#ph-tbl tbody');
+  if (!tbody) return;
+  var LBL={sent:'Enviado',cut:'Cortado',partial:'Parcial',pending:'Pendente'};
+  var CLR={sent:'#006600',cut:'#CC0000',partial:'#AA6600',pending:'#888'};
+  var html='';
+  sorted.forEach(function(r,i){
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var vu=r.vlUnitNum||parseMoney(r.vlUnit||'');
+    var vt=r.vlTotalNum||parseMoney(r.vlTotal||'');
+    var pct=r.status==='sent'?'<span style="color:#006600;font-weight:bold">✅ 100%</span>':
+            r.status==='cut'?'<span style="color:#CC0000;font-weight:bold">✕ 0%</span>':
+            r.status==='partial'?(r.qtdS?'<span style="color:#AA6600;font-weight:bold">~ '+Math.round(r.qtdE/r.qtdS*100)+'%</span>':'—'):'—';
+    var histRef=getHist().find(function(h){return h.numero===r.orc&&h.filial===r.filial;});
+    var hid=histRef?histRef.id:'';
+    html+='<tr style="background:'+bg+';cursor:'+(hid?'pointer':'default')+'" '+(hid?'onclick="openOrcFromProdHist(\''+hid+'\')" title="Abrir orçamento '+r.orc+'"':'')+'>';
+    html+='<td style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;text-decoration:'+(hid?'underline':'none')+'">'+r.orc+'</td>';
+    html+='<td style="padding:3px 5px;font-weight:bold;color:#AA6000">'+r.filial+'</td>';
+    html+='<td style="padding:3px 5px">'+r.data+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+r.unidade+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+r.qtdS+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+r.qtdE+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New">'+(vu>0?fmtMoney(vu):'—')+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;font-weight:bold">'+(vt>0?fmtMoney(vt):'—')+'</td>';
+    html+='<td style="padding:3px 5px;color:'+CLR[r.status]+';font-weight:bold">'+LBL[r.status]+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+pct+'</td>';
+    html+='<td style="padding:2px 3px">'+(hid?'<button class="vbtn sm prim" style="font-size:9px" onclick="event.stopPropagation();openOrcFromProdHist(\''+hid+'\')" title="Abrir orçamento">📋</button>':'')+'</td>';
+    html+='</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// ── Sorting para tabela rel. cortes consolidados ───────────
+var _rcSortFld = null, _rcSortAsc = true;
+
+function rcSort(th, field) {
+  if (!_rcData || !_rcData.length) return;
+  if (_rcSortFld === field) { _rcSortAsc = !_rcSortAsc; }
+  else { _rcSortFld = field; _rcSortAsc = true; }
+  document.querySelectorAll('#rc-tbl th').forEach(function(t){ t.classList.remove('sort-asc','sort-desc'); });
+  th.classList.add(_rcSortAsc ? 'sort-asc' : 'sort-desc');
+  var sorted = _rcData.slice().sort(function(a,b){
+    var va=a[field], vb=b[field];
+    if(field==='totalCortes'||field==='totalParciais'||field==='vlCorteTotal'){
+      return _rcSortAsc?(va||0)-(vb||0):(vb||0)-(va||0);
+    }
+    if(field==='ocorrencias'){
+      va=a.ocorrencias.length; vb=b.ocorrencias.length;
+      return _rcSortAsc?va-vb:vb-va;
+    }
+    va=String(va||'').toLowerCase(); vb=String(vb||'').toLowerCase();
+    return _rcSortAsc?va.localeCompare(vb):vb.localeCompare(va);
+  });
+  var tbody = document.querySelector('#rc-tbl tbody');
+  if (!tbody) return;
+  var html='';
+  sorted.forEach(function(d,i){
+    var bg=i%2===0?'#FFFEF5':'#F5EDD8';
+    var codEsc=d.codigo.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html+='<tr style="background:'+bg+';cursor:pointer" onclick="rcOpenProdHist(\''+codEsc+'\')" title="Ver histórico completo deste produto">';
+    html+='<td style="padding:3px 5px;text-align:center;color:#888;font-weight:bold">'+(i+1)+'</td>';
+    html+='<td class="cod-copy" style="padding:3px 5px;font-family:Courier New;color:#003399;font-size:10px;font-weight:bold;cursor:pointer" onclick="event.stopPropagation();copyCod(\''+codEsc+'\')" title="Clique para copiar código">'+d.codigo+'</td>';
+    html+='<td style="padding:3px 5px">'+d.nome+'</td>';
+    html+='<td style="padding:3px 5px;text-align:center">'+d.unidade+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#CC0000;font-weight:bold">'+d.totalCortes+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;color:#AA6600;font-weight:bold">'+d.totalParciais+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right">'+d.ocorrencias.length+'</td>';
+    html+='<td style="padding:3px 5px;text-align:right;font-family:Courier New;color:#CC0000;font-weight:bold">'+fmtMoney(d.vlCorteTotal)+'</td>';
+    html+='</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
 
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE USUARIOS & SINCRONIZACAO — Comercial do Norte
