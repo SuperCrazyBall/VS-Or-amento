@@ -314,6 +314,21 @@ tbody tr.row-p { background: #FFF0A0 !important; }
 .rel-opt:hover { background: #F5A700; }
 .rel-acts { padding: 4px 5px; display: flex; gap: 4px; flex-wrap: wrap; border-top: 1px solid #C09000; background: rgba(255,255,255,.25); }
 
+
+/* Input de data nativo — padrão visual do sistema */
+input[type="date"].vi {
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  color: #000;
+  background: #FFF;
+  padding: 2px 4px;
+}
+input[type="date"].vi::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+input[type="date"].vi:focus { background: #FFFFF0; }
+
 /* Histórico */
 .hf-bar { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; padding: 5px; background: linear-gradient(180deg,#FFE870,#F5D840); border: 1px solid #C09000; align-items: center; }
 .hcard { background: #FFFEF5; border: 2px solid; border-color: #DDD #888 #888 #DDD; padding: 5px 8px; margin-bottom: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -1698,13 +1713,22 @@ th.sort-desc::after { content:' ▼'; font-size:8px; }
     <div id="pane-hist" class="pane">
       <div class="hf-bar">
         <select id="hf-fil" class="vs-sel" onchange="renderHist()" style="min-width:130px"><option value="">Todas as filiais</option></select>
-        <select id="hf-per" class="vs-sel" onchange="renderHist()">
+        <select id="hf-per" class="vs-sel" onchange="hfPerChange()">
           <option value="">Todo período</option>
           <option value="7">Últimos 7 dias</option>
           <option value="15">Últimos 15 dias</option>
           <option value="30">Últimos 30 dias</option>
           <option value="90">Últimos 90 dias</option>
+          <option value="custom">Período personalizado...</option>
         </select>
+        <!-- Campos de data — visíveis apenas quando "Período personalizado" está selecionado -->
+        <span id="hf-custom-wrap" style="display:none;align-items:center;gap:4px;flex-wrap:nowrap">
+          <label style="font-size:10px;font-weight:bold;color:#553300;white-space:nowrap">De:</label>
+          <input type="date" id="hf-dt-de" class="vi" style="min-width:115px;cursor:pointer" onchange="renderHist()" title="Data inicial">
+          <label style="font-size:10px;font-weight:bold;color:#553300;white-space:nowrap">até:</label>
+          <input type="date" id="hf-dt-ate" class="vi" style="min-width:115px;cursor:pointer" onchange="renderHist()" title="Data final">
+          <button class="vbtn sm" onclick="hfClearCustom()" title="Limpar datas" style="padding:1px 5px;font-size:10px">✕</button>
+        </span>
         <input id="hf-busca" class="vi" placeholder="Buscar nº/filial..." oninput="renderHist()" style="min-width:130px">
         <button class="vbtn" onclick="renderHist()">🔍 Buscar</button>
         <div class="asep"></div>
@@ -2160,6 +2184,8 @@ function normUnit(s){
 // APPLY RESULT
 // ════════════════════════════════════════════════════════════
 function applyResult(data) {
+  // Se vier de um import novo (não do histórico), limpar o ID vinculado
+  if (!data.id) { _loadedHistId = null; }
   orderInfo={
     filial:data.filial||'Não identificada', gestor:data.gestor||'Não identificado',
     numero:data.numero||'—', data:data.data||'—', cnpj:data.cnpj||'—',
@@ -2393,11 +2419,27 @@ function genRel(fmt){
 // HISTÓRICO
 // ════════════════════════════════════════════════════════════
 var viewingId=null;
+// ID do orçamento carregado do histórico (garante que ao salvar após
+// editar cabeçalho — inclusive troca de filial — o mesmo registro é
+// atualizado em vez de criar uma cópia duplicada)
+var _loadedHistId = null;
+
 function saveOrc(){
   if(!products.length){toast('Nenhum orçamento para salvar.','err');return;}
   var hist=getHist();
   var now=new Date().toISOString();
-  var ex=hist.findIndex(function(h){return h.numero===orderInfo.numero&&h.filial===orderInfo.filial;});
+
+  // Prioridade 1: buscar pelo ID guardado quando o orçamento foi carregado do histórico.
+  // Isso evita duplicação quando o cabeçalho (filial, número etc.) foi editado após carregar.
+  var ex = -1;
+  if(_loadedHistId){
+    ex = hist.findIndex(function(h){ return h.id === _loadedHistId; });
+  }
+  // Prioridade 2: fallback — busca por número + filial (orçamento recém-importado, não carregado)
+  if(ex < 0){
+    ex = hist.findIndex(function(h){ return h.numero===orderInfo.numero && h.filial===orderInfo.filial; });
+  }
+
   var rec={
     id: ex>=0 ? hist[ex].id : Date.now().toString(),
     // createdAt é SEMPRE preservado do original — nunca muda após criação
@@ -2408,8 +2450,15 @@ function saveOrc(){
     endereco:orderInfo.endereco, validade:orderInfo.validade, total:orderInfo.total,
     products:products.map(function(p){return Object.assign({},p);})
   };
-  if(ex>=0){hist[ex]=rec;toast('✔ Orçamento atualizado no histórico!','ok');}
-  else{hist.unshift(rec);toast('✔ Orçamento salvo no histórico!','ok');}
+  if(ex>=0){
+    hist[ex]=rec;
+    _loadedHistId = rec.id; // manter referência atualizada
+    toast('✔ Orçamento atualizado no histórico!','ok');
+  } else {
+    hist.unshift(rec);
+    _loadedHistId = rec.id; // registrar ID para saves subsequentes
+    toast('✔ Orçamento salvo no histórico!','ok');
+  }
   setHist(hist); fillFils();
 }
 
@@ -2437,14 +2486,44 @@ function fillFils(){
   if(rcFilEl  && prevRc)  rcFilEl.value  = prevRc;
 }
 
+function hfPerChange(){
+  var val = document.getElementById('hf-per').value;
+  var wrap = document.getElementById('hf-custom-wrap');
+  if(wrap) wrap.style.display = (val === 'custom') ? 'flex' : 'none';
+  renderHist();
+}
+
+function hfClearCustom(){
+  var de = document.getElementById('hf-dt-de');
+  var ate = document.getElementById('hf-dt-ate');
+  if(de) de.value = '';
+  if(ate) ate.value = '';
+  renderHist();
+}
+
 function renderHist(){
   var hist=getHist();
   var ff=document.getElementById('hf-fil').value, fp=document.getElementById('hf-per').value;
   var fb=document.getElementById('hf-busca').value.toLowerCase();
-  var co=fp?new Date(Date.now()-parseInt(fp)*86400000):null;
+
+  // Calcular o corte de data conforme o modo selecionado
+  var co=null, coAte=null;
+  if(fp === 'custom'){
+    // Modo período personalizado: ler os dois inputs de data
+    var dtDeVal  = document.getElementById('hf-dt-de')  ? document.getElementById('hf-dt-de').value  : '';
+    var dtAteVal = document.getElementById('hf-dt-ate') ? document.getElementById('hf-dt-ate').value : '';
+    if(dtDeVal)  { co      = new Date(dtDeVal  + 'T00:00:00'); }
+    if(dtAteVal) { coAte   = new Date(dtAteVal + 'T23:59:59'); }
+  } else if(fp) {
+    // Modo predefinido: últimos N dias
+    co = new Date(Date.now() - parseInt(fp) * 86400000);
+  }
+
   hist=hist.filter(function(h){
     if(ff&&h.filial!==ff)return false;
-    if(co&&new Date(h.savedAt)<co)return false;
+    var savedAt = new Date(h.savedAt);
+    if(co    && savedAt < co)    return false;
+    if(coAte && savedAt > coAte) return false;
     if(fb&&h.numero.toLowerCase().indexOf(fb)<0&&(h.filial||'').toLowerCase().indexOf(fb)<0)return false;
     return true;
   });
@@ -2556,8 +2635,8 @@ function hvRowClick(idx){
   var cod=rows[idx].getAttribute('data-cod');
   if(cod) quickProdHist(cod);
 }
-function loadFromHist(){var h=getHist().find(function(x){return x.id===viewingId;});if(!h)return;closeM('m-hview');applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
-function loadDirect(id){var h=getHist().find(function(x){return x.id===id;});if(!h)return;applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
+function loadFromHist(){var h=getHist().find(function(x){return x.id===viewingId;});if(!h)return;closeM('m-hview');_loadedHistId=h.id;applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
+function loadDirect(id){var h=getHist().find(function(x){return x.id===id;});if(!h)return;_loadedHistId=h.id;applyResult(h);switchTab('pane-import');toast('✔ Orçamento carregado.','ok');}
 function delDirect(id){if(!confirm('Excluir este orçamento?'))return;var hist=getHist().filter(function(h){return h.id!==id;});setHist(hist);renderHist();fillFils();toast('Excluído.','warn');}
 function delHistItem(){if(!viewingId)return;if(!confirm('Excluir?'))return;var hist=getHist().filter(function(h){return h.id!==viewingId;});setHist(hist);closeM('m-hview');renderHist();fillFils();toast('Excluído.','warn');}
 function clearHist(){if(!confirm('Apagar TODO o histórico?'))return;localStorage.removeItem(STORE_KEY);renderHist();fillFils();toast('Histórico apagado.','warn');}
