@@ -4180,8 +4180,11 @@ async function pullSync() {
       fillFils();
       if (document.getElementById('pane-hist').classList.contains('active')) renderHist();
       setSyncSt('ok', 'Atualizado ✓');
-    } else if (CURRENT_USER.role === 'admin') {
-      // Local mais recente — enviar para nuvem
+    } else if (CURRENT_USER.role === 'admin' && lastSyncTs > 0) {
+      // Local mais recente E já sincronizou ao menos uma vez nesta sessão — enviar para nuvem.
+      // IMPORTANTE: lastSyncTs===0 significa primeira carga após abertura do sistema;
+      // nunca sobrescrevemos o Firebase sem ter recebido ao menos um pull bem-sucedido,
+      // para evitar apagar dados remotos mais recentes ao abrir uma nova sessão.
       await pushSync();
     } else {
       setSyncSt('ok', 'Sincronizado ✓');
