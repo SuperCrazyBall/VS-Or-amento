@@ -2375,7 +2375,12 @@ function updStats(){
   setStatus(products.length+' itens | '+(c.sent||0)+' enviados | '+cuts+' cortes');
 }
 function markAllSent(){products.forEach(function(p){p.status='sent';p.qtdEnviada=p.qtdSolicitada;});renderTbl();updStats();updValSum();toast('✔ Todos marcados Enviado.','ok');}
-function resetAll(){products.forEach(function(p){p.status='pending';p.qtdEnviada=p.qtdSolicitada;});renderTbl();updStats();updValSum();toast('↺ Seleções limpas.');}
+function resetAll(){
+  if(!products.length) return; // Nada para limpar, não precisa confirmar
+  if(!confirm('⚠ Limpar todas as seleções?\n\nTodas as marcações de status (Enviado, Parcial, Corte) e quantidades editadas serão redefinidas para o estado inicial.\n\nDeseja continuar?')) return;
+  products.forEach(function(p){p.status='pending';p.qtdEnviada=p.qtdSolicitada;});
+  renderTbl();updStats();updValSum();toast('↺ Seleções limpas.');
+}
 
 function showCuts(){
   var cuts=products.filter(function(p){return p.status==='cut'||p.status==='partial';});
@@ -3037,7 +3042,12 @@ document.addEventListener('keydown', function(e){
   if(e.key==='F8'){e.preventDefault();saveOrc();return;}
   if(e.key==='F9'){e.preventDefault();openM('m-manual');return;}
   if(e.key==='F10'){e.preventDefault();openProdHistStandalone();return;}
-  if(e.key==='Escape'&&!inInput){resetAll();return;}
+  if(e.key==='Escape'&&!inInput){
+    // Só limpa seleções se não houver nenhum modal aberto (modais têm prioridade no ESC)
+    var hasModal=document.querySelectorAll('.mov.on').length>0;
+    if(!hasModal){resetAll();}
+    return;
+  }
   if(inInput) return;
   if(e.key==='s'||e.key==='S'){quickSt('sent');return;}
   if(e.key==='p'||e.key==='P'){quickSt('partial');return;}
