@@ -165,6 +165,13 @@ body {
   display: block;
 }
 
+.vs-file {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  font: inherit;
+}
+
 .muted {
   margin-top: 4px;
   color: #675f4c;
@@ -239,6 +246,36 @@ th {
   color: #675f4c;
   text-align: center;
 }
+
+.import-summary {
+  display: grid;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px solid #c09000;
+  background: #fff0a8;
+  color: #553300;
+}
+
+.import-summary strong {
+  display: block;
+}
+
+.import-ok {
+  border-color: #1f7a30;
+  background: #dff5dd;
+  color: #0f5c1d;
+}
+
+.import-error {
+  border-color: #aa0000;
+  background: #ffe0dc;
+  color: #880000;
+}
+
+.import-empty {
+  border-color: #c09000;
+  background: #fff0a8;
+  color: #553300;
 }
 
 .status-alert {
