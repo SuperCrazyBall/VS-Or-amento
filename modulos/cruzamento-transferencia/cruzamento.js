@@ -36,8 +36,13 @@
     },
     resultados: [],
     resultadosFiltrados: [],
+    indices: {
+      excesso: {},
+      ruptura: {}
+    },
+    rupturaSemOrigem: 0,
     sort: {
-      key: 'codigo',
+      key: 'prioridade',
       dir: 'asc'
     }
   };
@@ -235,7 +240,37 @@
   }
 
   function cruzamentoCode(value) {
-    return String(value || '').replace(/\D/g, '');
+    return String(value == null ? '' : value)
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/[\s\r\n\t]+/g, '')
+      .replace(/\D/g, '');
+  }
+
+  function cruzamentoHasNumber(value) {
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  }
+
+  function cruzamentoRoundQty(value) {
+    if (!cruzamentoHasNumber(value)) return null;
+    return Math.round(Number(value) * 100) / 100;
+  }
+
+  function cruzamentoClasseRank(value) {
+    var cls = String(value || '').trim().toUpperCase();
+    if (cls === 'A') return 1;
+    if (cls === 'B') return 2;
+    if (cls === 'C') return 3;
+    return 9;
+  }
+
+  function cruzamentoIndexByCodigo(items) {
+    var index = {};
+    (items || []).forEach(function (item) {
+      var codigo = cruzamentoCode(item && item.codigo);
+      if (!codigo) return;
+      if (!index[codigo]) index[codigo] = item;
+    });
+    return index;
   }
 
   function cruzamentoSplitCodigoDescricao(value) {
@@ -379,7 +414,11 @@
     } else if (cruzamentoState.status === 'ruptura-lendo') {
       status.textContent = 'Lendo arquivo de ruptura...';
     } else if (cruzamentoState.status === 'analise-ok') {
-      status.textContent = 'Analise concluida. Resultados filtrados: ' + cruzamentoState.resultadosFiltrados.length + '.';
+      status.textContent = 'Analise concluida. Resultados filtrados: '
+        + cruzamentoState.resultadosFiltrados.length
+        + '. Rupturas sem origem em excesso: '
+        + cruzamentoState.rupturaSemOrigem
+        + '.';
     } else if (cruzamentoState.status === 'excesso-invalido') {
       status.textContent = 'Corrija o arquivo de excesso.';
     } else if (cruzamentoState.status === 'ruptura-invalido') {
@@ -622,13 +661,47 @@
   }
 
   function cruzamentoBuildResultado(excesso, ruptura) {
-    var necessidade = ruptura.dez === null ? null : Math.max(0, ruptura.dez || 0);
-    var excessoQtd = excesso.excessoQtd === null ? 0 : excesso.excessoQtd || 0;
-    var sugerida = necessidade === null
-      ? Math.max(0, excessoQtd)
-      : Math.max(0, Math.min(excessoQtd, necessidade));
-    var valorTransferencia = ruptura.custo === null ? null : sugerida * (ruptura.custo || 0);
-    var observacao = sugerida > 0 ? 'Sugestao inicial' : 'Sem quantidade sugerida';
+    var observacoes = [];
+    var necessidade = null;
+    var excessoQtd = cruzamentoHasNumber(excesso.excessoQtd) ? Number(excesso.excessoQtd) : 0;
+    var valorRuptura = cruzamentoHasNumber(ruptura.valorRuptura) ? Number(ruptura.valorRuptura) : null;
+    var custo = cruzamentoHasNumber(ruptura.custo) ? Number(ruptura.custo) : null;
+    var dez = cruzamentoHasNumber(ruptura.dez) ? Number(ruptura.dez) : null;
+    var mediaDiaRuptura = cruzamentoHasNumber(ruptura.mediaDiaRuptura) ? Number(ruptura.mediaDiaRuptura) : null;
+    var sugerida = 0;
+    var valorTransferencia = null;
+
+    if (valorRuptura !== null && custo !== null && custo > 0) {
+      necessidade = cruzamentoRoundQty(valorRuptura / custo);
+      observacoes.push('Necessidade por ruptura/custo');
+    } else if (dez !== null && mediaDiaRuptura !== null) {
+      necessidade = cruzamentoRoundQty(dez * mediaDiaRuptura);
+      observacoes.push('Necessidade por DEZ x media dia');
+    } else {
+      observacoes.push('Necessidade nao calculada');
+    }
+
+    if (excessoQtd <= 0) {
+      sugerida = 0;
+      observacoes.push('Sem excesso disponivel');
+    } else if (necessidade === null) {
+      sugerida = 0;
+      observacoes.push('Sugestao zerada sem necessidade calculada');
+    } else {
+      sugerida = cruzamentoRoundQty(Math.max(0, Math.min(excessoQtd, necessidade)));
+    }
+
+    if (custo !== null && custo > 0) {
+      valorTransferencia = cruzamentoRoundQty(sugerida * custo);
+    } else {
+      observacoes.push('Valor sem custo valido');
+    }
+
+    if (sugerida > 0) {
+      observacoes.push('Sugestao calculada');
+    } else {
+      observacoes.push('Sem quantidade sugerida');
+    }
 
     return {
       codigo: excesso.codigo,
@@ -651,29 +724,40 @@
       qtdNecessaria: necessidade,
       qtdSugerida: sugerida,
       valorTransferencia: valorTransferencia,
-      observacao: observacao
+      observacao: observacoes.join('; ')
     };
   }
 
   function cruzamentoAnalisar() {
     var excessoRows = cruzamentoState.excesso.items.length ? cruzamentoState.excesso.items : cruzamentoParseExcessoRows();
     var rupturaRows = cruzamentoState.ruptura.items.length ? cruzamentoState.ruptura.items : cruzamentoParseRupturaRows();
-    var excessoPorCodigo = {};
+    var excessoPorCodigo = cruzamentoIndexByCodigo(excessoRows);
+    var rupturaPorCodigo = cruzamentoIndexByCodigo(rupturaRows);
     var resultados = [];
+    var semOrigem = 0;
 
     if (!cruzamentoState.excesso.valid || !cruzamentoState.ruptura.valid) return;
 
-    excessoRows.forEach(function (item) {
-      if (!excessoPorCodigo[item.codigo]) excessoPorCodigo[item.codigo] = item;
-    });
+    cruzamentoState.indices.excesso = excessoPorCodigo;
+    cruzamentoState.indices.ruptura = rupturaPorCodigo;
 
     rupturaRows.forEach(function (ruptura) {
-      var excesso = excessoPorCodigo[ruptura.codigo];
-      if (excesso) resultados.push(cruzamentoBuildResultado(excesso, ruptura));
+      var codigo = cruzamentoCode(ruptura.codigo);
+      var excesso = excessoPorCodigo[codigo];
+      if (excesso) {
+        resultados.push(cruzamentoBuildResultado(excesso, ruptura));
+      } else {
+        semOrigem += 1;
+      }
     });
 
     cruzamentoState.resultados = resultados;
+    cruzamentoState.rupturaSemOrigem = semOrigem;
     cruzamentoState.resultadoPronto = true;
+    cruzamentoState.sort = {
+      key: 'prioridade',
+      dir: 'asc'
+    };
     cruzamentoState.status = 'analise-ok';
     cruzamentoApplyFiltros();
     cruzamentoRenderAcoes();
@@ -702,12 +786,23 @@
     var numeric = {
       rupturaValor: 1,
       excessoQtd: 1,
-      qtdSugerida: 1
+      qtdSugerida: 1,
+      cobertura: 1
     };
 
     return rows.slice().sort(function (a, b) {
       var av = a[sort.key];
       var bv = b[sort.key];
+
+      if (sort.key === 'prioridade') {
+        var ac = cruzamentoClasseRank(a.classeGeral);
+        var bc = cruzamentoClasseRank(b.classeGeral);
+        if (ac !== bc) return ac - bc;
+        if ((b.rupturaValor || 0) !== (a.rupturaValor || 0)) return (b.rupturaValor || 0) - (a.rupturaValor || 0);
+        if ((b.qtdSugerida || 0) !== (a.qtdSugerida || 0)) return (b.qtdSugerida || 0) - (a.qtdSugerida || 0);
+        return (a.cobertura || 0) - (b.cobertura || 0);
+      }
+
       if (numeric[sort.key]) return ((Number(av) || 0) - (Number(bv) || 0)) * dir;
       av = String(av == null ? '' : av).toUpperCase();
       bv = String(bv == null ? '' : bv).toUpperCase();
@@ -729,6 +824,11 @@
     cruzamentoState.resultadoPronto = false;
     cruzamentoState.resultados = [];
     cruzamentoState.resultadosFiltrados = [];
+    cruzamentoState.indices = {
+      excesso: {},
+      ruptura: {}
+    };
+    cruzamentoState.rupturaSemOrigem = 0;
   }
 
   function cruzamentoTotals() {
@@ -972,8 +1072,13 @@
     };
     cruzamentoState.resultados = [];
     cruzamentoState.resultadosFiltrados = [];
+    cruzamentoState.indices = {
+      excesso: {},
+      ruptura: {}
+    };
+    cruzamentoState.rupturaSemOrigem = 0;
     cruzamentoState.sort = {
-      key: 'codigo',
+      key: 'prioridade',
       dir: 'asc'
     };
   }
