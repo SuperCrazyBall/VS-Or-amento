@@ -4,6 +4,7 @@
     modulo: 'cruzamento-transferencia',
     currentUser: null,
     canAccess: false,
+    resultadoPronto: false,
     excesso: {
       fileName: '',
       filial: '',
@@ -170,6 +171,7 @@
     cruzamentoState.status = 'excesso-invalido';
     cruzamentoRenderExcesso();
     cruzamentoRenderMainStatus();
+    cruzamentoRenderAcoes();
   }
 
   function cruzamentoRenderRuptura() {
@@ -201,6 +203,7 @@
     cruzamentoState.status = 'ruptura-invalido';
     cruzamentoRenderRuptura();
     cruzamentoRenderMainStatus();
+    cruzamentoRenderAcoes();
   }
 
   function cruzamentoRenderMainStatus() {
@@ -298,6 +301,7 @@
 
         cruzamentoRenderExcesso();
         cruzamentoRenderMainStatus();
+        cruzamentoRenderAcoes();
       } catch (err) {
         cruzamentoSetExcessoError(file.name, 'Falha ao ler a planilha de excesso.');
       }
@@ -380,6 +384,7 @@
 
         cruzamentoRenderRuptura();
         cruzamentoRenderMainStatus();
+        cruzamentoRenderAcoes();
       } catch (err) {
         cruzamentoSetRupturaError(file.name, 'Falha ao ler a planilha de ruptura.');
       }
@@ -501,6 +506,111 @@
     cruzamentoSyncFiltrosFromInputs();
   }
 
+  function cruzamentoSetDisabled(id, disabled) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = !!disabled;
+  }
+
+  function cruzamentoRenderAcoes() {
+    var canAnalyze = cruzamentoState.excesso.valid && cruzamentoState.ruptura.valid;
+    var hasResult = !!cruzamentoState.resultadoPronto;
+
+    cruzamentoSetDisabled('cruzamento-btn-analisar', !canAnalyze);
+    cruzamentoSetDisabled('cruzamento-btn-exportar', !hasResult);
+    cruzamentoSetDisabled('cruzamento-btn-pdf', !hasResult);
+    cruzamentoSetDisabled('cruzamento-btn-copiar', !hasResult);
+  }
+
+  function cruzamentoResetImportState() {
+    cruzamentoState.status = 'inicial';
+    cruzamentoState.resultadoPronto = false;
+    cruzamentoState.excesso = {
+      fileName: '',
+      filial: '',
+      headers: [],
+      rows: [],
+      valid: false,
+      message: 'Aguardando arquivo de excesso.'
+    };
+    cruzamentoState.ruptura = {
+      fileName: '',
+      filial: '',
+      headers: [],
+      rows: [],
+      valid: false,
+      message: 'Aguardando arquivo de ruptura.'
+    };
+    cruzamentoState.filtros = {
+      classeGeral: '',
+      classeExcesso: '',
+      classeRuptura: '',
+      valorRupturaMin: 0,
+      qtdExcessoMin: 0,
+      coberturaMin: '',
+      coberturaMax: '',
+      busca: '',
+      somenteSugestao: false
+    };
+  }
+
+  function cruzamentoClearFileInputs() {
+    var ids = [
+      'cruzamento-excesso-input',
+      'cruzamento-ruptura-input',
+      'cruzamento-excesso-filial',
+      'cruzamento-ruptura-filial'
+    ];
+
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  function cruzamentoLimparImportacoes() {
+    cruzamentoResetImportState();
+    cruzamentoClearFileInputs();
+    cruzamentoRenderExcesso();
+    cruzamentoRenderRuptura();
+    cruzamentoRenderFiltros();
+    cruzamentoRenderMainStatus();
+    cruzamentoRenderAcoes();
+  }
+
+  function cruzamentoPlaceholderAcao(message) {
+    var status = document.getElementById('cruzamento-status');
+    if (status) {
+      status.textContent = message;
+      status.setAttribute('data-state', 'acao-pendente');
+    }
+  }
+
+  function cruzamentoBindAcoes() {
+    var analisar = document.getElementById('cruzamento-btn-analisar');
+    var limpar = document.getElementById('cruzamento-btn-limpar');
+    var exportar = document.getElementById('cruzamento-btn-exportar');
+    var pdf = document.getElementById('cruzamento-btn-pdf');
+    var copiar = document.getElementById('cruzamento-btn-copiar');
+
+    if (analisar) {
+      analisar.addEventListener('click', function () {
+        cruzamentoPlaceholderAcao('Analise do cruzamento sera implementada nas proximas etapas.');
+      });
+    }
+    if (limpar) limpar.addEventListener('click', cruzamentoLimparImportacoes);
+    if (exportar) exportar.addEventListener('click', function () {
+      cruzamentoPlaceholderAcao('Exportacao sera liberada apos resultado valido.');
+    });
+    if (pdf) pdf.addEventListener('click', function () {
+      cruzamentoPlaceholderAcao('Impressao/PDF sera liberado apos resultado valido.');
+    });
+    if (copiar) copiar.addEventListener('click', function () {
+      cruzamentoPlaceholderAcao('Copia de codigos sera liberada apos resultado valido.');
+    });
+
+    cruzamentoRenderAcoes();
+  }
+
   function cruzamentoRenderAccess() {
     var app = document.getElementById('cruzamento-app');
     var denied = document.getElementById('cruzamento-denied');
@@ -531,6 +641,7 @@
   cruzamentoBindExcessoImport();
   cruzamentoBindRupturaImport();
   cruzamentoBindFiltros();
+  cruzamentoBindAcoes();
   cruzamentoRenderAccess();
   cruzamentoWatchAccess();
 })();
