@@ -34,7 +34,7 @@
         <section class="kpi-grid" aria-label="Indicadores do cruzamento">
           <div class="kpi-box">
             <span>Itens em excesso</span>
-            <strong>0</strong>
+            <strong id="cruzamento-kpi-excesso">0</strong>
           </div>
           <div class="kpi-box">
             <span>Itens em ruptura</span>
@@ -54,14 +54,19 @@
           <article class="mini-panel">
             <div class="mini-hd">1. Importar Excesso da Filial Origem</div>
             <div class="mini-bd">
-              <div class="file-drop">
-                <strong>Nenhum arquivo selecionado</strong>
+              <div id="cruzamento-excesso-drop" class="file-drop">
+                <strong id="cruzamento-excesso-file">Nenhum arquivo selecionado</strong>
                 <span class="muted">Arquivo esperado: .xlsx com estoque, media, cobertura e excesso.</span>
+                <input id="cruzamento-excesso-input" class="vs-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
               </div>
               <label>
                 Filial origem
-                <input class="vs-input" type="text" value="" disabled>
+                <input id="cruzamento-excesso-filial" class="vs-input" type="text" value="" placeholder="Digite a filial origem">
               </label>
+              <div id="cruzamento-excesso-summary" class="import-summary import-empty">
+                <span id="cruzamento-excesso-lines">Linhas lidas: 0</span>
+                <strong id="cruzamento-excesso-status">Aguardando arquivo de excesso.</strong>
+              </div>
             </div>
           </article>
 
