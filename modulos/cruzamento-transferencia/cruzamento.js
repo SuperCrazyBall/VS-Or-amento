@@ -23,6 +23,8 @@
   ];
 
   function cruzamentoGetCurrentUser() {
+    var operatorName;
+
     try {
       if (window.parent && window.parent !== window && window.parent.CURRENT_USER) {
         return window.parent.CURRENT_USER;
@@ -30,7 +32,37 @@
     } catch (err) {
       return null;
     }
+
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) {
+        operatorName = cruzamentoGetParentOperatorName(window.parent.document);
+        if (operatorName) {
+          return {
+            name: operatorName,
+            role: operatorName === 'GERENTE' ? 'viewer' : 'admin'
+          };
+        }
+      }
+    } catch (err2) {
+      return null;
+    }
+
     return null;
+  }
+
+  function cruzamentoGetParentOperatorName(parentDocument) {
+    var userEl = parentDocument.getElementById('seg-user');
+    var topEl = parentDocument.getElementById('tb-op');
+    var segOp = parentDocument.getElementById('seg-op');
+    var value = '';
+
+    if (userEl) value = userEl.textContent || '';
+    if (!value && topEl) value = topEl.textContent || '';
+    if (!value && segOp) value = (segOp.textContent || '').replace(/^Operador\s*:\s*/i, '');
+
+    value = String(value || '').trim().toUpperCase();
+    if (!value || value === 'JHONNY' || value === '-') return '';
+    return value;
   }
 
   function cruzamentoCanAccess(user) {
@@ -227,7 +259,6 @@
   function cruzamentoRenderAccess() {
     var app = document.getElementById('cruzamento-app');
     var denied = document.getElementById('cruzamento-denied');
-    var status = document.getElementById('cruzamento-status');
 
     cruzamentoState.currentUser = cruzamentoGetCurrentUser();
     cruzamentoState.canAccess = cruzamentoCanAccess(cruzamentoState.currentUser);
@@ -238,6 +269,21 @@
     cruzamentoRenderMainStatus();
   }
 
+  function cruzamentoWatchAccess() {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries += 1;
+      cruzamentoRenderAccess();
+      if (cruzamentoState.canAccess || tries >= 120) {
+        clearInterval(timer);
+      }
+    }, 500);
+
+    window.addEventListener('focus', cruzamentoRenderAccess);
+    document.addEventListener('visibilitychange', cruzamentoRenderAccess);
+  }
+
   cruzamentoBindExcessoImport();
   cruzamentoRenderAccess();
+  cruzamentoWatchAccess();
 })();
