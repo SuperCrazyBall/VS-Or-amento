@@ -19,6 +19,17 @@
       rows: [],
       valid: false,
       message: 'Aguardando arquivo de ruptura.'
+    },
+    filtros: {
+      classeGeral: '',
+      classeExcesso: '',
+      classeRuptura: '',
+      valorRupturaMin: 0,
+      qtdExcessoMin: 0,
+      coberturaMin: '',
+      coberturaMax: '',
+      busca: '',
+      somenteSugestao: false
     }
   };
 
@@ -417,6 +428,79 @@
     cruzamentoRenderRuptura();
   }
 
+  function cruzamentoNumberValue(id, emptyValue) {
+    var el = document.getElementById(id);
+    var value = el ? el.value : '';
+    if (value === '') return emptyValue;
+    return Number(value) || 0;
+  }
+
+  function cruzamentoRenderFiltros() {
+    var filtros = cruzamentoState.filtros;
+    var fields = {
+      'cruzamento-filtro-classe-geral': filtros.classeGeral,
+      'cruzamento-filtro-classe-excesso': filtros.classeExcesso,
+      'cruzamento-filtro-classe-ruptura': filtros.classeRuptura,
+      'cruzamento-filtro-valor-ruptura': filtros.valorRupturaMin,
+      'cruzamento-filtro-qtd-excesso': filtros.qtdExcessoMin,
+      'cruzamento-filtro-cobertura-min': filtros.coberturaMin,
+      'cruzamento-filtro-cobertura-max': filtros.coberturaMax,
+      'cruzamento-filtro-busca': filtros.busca
+    };
+    var check = document.getElementById('cruzamento-filtro-sugestao');
+
+    Object.keys(fields).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = fields[id];
+    });
+
+    if (check) check.checked = !!filtros.somenteSugestao;
+  }
+
+  function cruzamentoSyncFiltrosFromInputs() {
+    var filtros = cruzamentoState.filtros;
+    var el;
+
+    el = document.getElementById('cruzamento-filtro-classe-geral');
+    filtros.classeGeral = el ? el.value : '';
+    el = document.getElementById('cruzamento-filtro-classe-excesso');
+    filtros.classeExcesso = el ? el.value : '';
+    el = document.getElementById('cruzamento-filtro-classe-ruptura');
+    filtros.classeRuptura = el ? el.value : '';
+    filtros.valorRupturaMin = cruzamentoNumberValue('cruzamento-filtro-valor-ruptura', 0);
+    filtros.qtdExcessoMin = cruzamentoNumberValue('cruzamento-filtro-qtd-excesso', 0);
+    filtros.coberturaMin = cruzamentoNumberValue('cruzamento-filtro-cobertura-min', '');
+    filtros.coberturaMax = cruzamentoNumberValue('cruzamento-filtro-cobertura-max', '');
+    el = document.getElementById('cruzamento-filtro-busca');
+    filtros.busca = el ? el.value.trim() : '';
+    el = document.getElementById('cruzamento-filtro-sugestao');
+    filtros.somenteSugestao = !!(el && el.checked);
+  }
+
+  function cruzamentoBindFiltros() {
+    var ids = [
+      'cruzamento-filtro-classe-geral',
+      'cruzamento-filtro-classe-excesso',
+      'cruzamento-filtro-classe-ruptura',
+      'cruzamento-filtro-valor-ruptura',
+      'cruzamento-filtro-qtd-excesso',
+      'cruzamento-filtro-cobertura-min',
+      'cruzamento-filtro-cobertura-max',
+      'cruzamento-filtro-busca',
+      'cruzamento-filtro-sugestao'
+    ];
+
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', cruzamentoSyncFiltrosFromInputs);
+      el.addEventListener('input', cruzamentoSyncFiltrosFromInputs);
+    });
+
+    cruzamentoRenderFiltros();
+    cruzamentoSyncFiltrosFromInputs();
+  }
+
   function cruzamentoRenderAccess() {
     var app = document.getElementById('cruzamento-app');
     var denied = document.getElementById('cruzamento-denied');
@@ -446,6 +530,7 @@
 
   cruzamentoBindExcessoImport();
   cruzamentoBindRupturaImport();
+  cruzamentoBindFiltros();
   cruzamentoRenderAccess();
   cruzamentoWatchAccess();
 })();
