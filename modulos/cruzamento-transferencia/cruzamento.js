@@ -10,6 +10,7 @@
       filial: '',
       headers: [],
       rows: [],
+      items: [],
       valid: false,
       message: 'Aguardando arquivo de excesso.'
     },
@@ -18,6 +19,7 @@
       filial: '',
       headers: [],
       rows: [],
+      items: [],
       valid: false,
       message: 'Aguardando arquivo de ruptura.'
     },
@@ -40,20 +42,45 @@
     }
   };
 
+  var cruzamentoHeaderAliasGroups = {
+    codigoDescricao: ['CODIGO DESCRICAO', 'CODIGO PRODUTO', 'CODIGO_PRODUTO', 'CODIGO'],
+    codigoProduto: ['CODIGO_PRODUTO', 'CODIGO PRODUTO', 'CODIGO'],
+    descricao: ['DESCRICAO'],
+    estoque: ['ESTOQUE'],
+    mediaDia: ['MEDIA DIA', 'MEDIA_DIA'],
+    cobertura: ['COBERTURA'],
+    excessoQtd: ['EXCESSO'],
+    percExcesso: ['% EXCESSO', 'PERCENTUAL EXCESSO', 'PERC EXCESSO'],
+    valorExcesso: ['R$ EXCESSO', 'RS EXCESSO', 'VALOR EXCESSO'],
+    valorEstoque: ['R$ ESTOQUE', 'RS ESTOQUE', 'VALOR ESTOQUE'],
+    valorRuptura: ['R$ RUPTURA', 'RS RUPTURA', 'VALOR RUPTURA'],
+    dez: ['DEZ'],
+    custo: ['CUSTO'],
+    classeGeral: ['CLASSE GERAL'],
+    classeFilial: ['CLASSE FILIAL']
+  };
+
   var cruzamentoExcessoRequiredHeaders = [
-    'CODIGO DESCRICAO',
-    'ESTOQUE',
-    'MEDIA DIA',
-    'COBERTURA',
-    'EXCESSO'
+    { label: 'CODIGO DESCRICAO', key: 'codigoDescricao' },
+    { label: 'ESTOQUE', key: 'estoque' },
+    { label: 'MEDIA DIA', key: 'mediaDia' },
+    { label: 'COBERTURA', key: 'cobertura' },
+    { label: 'EXCESSO', key: 'excessoQtd' },
+    { label: 'R$ EXCESSO', key: 'valorExcesso' },
+    { label: 'R$ ESTOQUE', key: 'valorEstoque' },
+    { label: 'CLASSE GERAL', key: 'classeGeral' },
+    { label: 'CLASSE FILIAL', key: 'classeFilial' }
   ];
 
   var cruzamentoRupturaRequiredHeaders = [
-    'CODIGO_PRODUTO',
-    'DESCRICAO',
-    'R$ RUPTURA',
-    'MEDIA DIA',
-    'CUSTO'
+    { label: 'CODIGO_PRODUTO', key: 'codigoProduto' },
+    { label: 'DESCRICAO', key: 'descricao' },
+    { label: 'R$ RUPTURA', key: 'valorRuptura' },
+    { label: 'DEZ', key: 'dez' },
+    { label: 'MEDIA DIA', key: 'mediaDia' },
+    { label: 'CUSTO', key: 'custo' },
+    { label: 'CLASSE GERAL', key: 'classeGeral' },
+    { label: 'CLASSE FILIAL', key: 'classeFilial' }
   ];
 
   function cruzamentoGetCurrentUser() {
@@ -118,18 +145,62 @@
     return window.XLSX || null;
   }
 
+  function cruzamentoPickSheetName(workbook) {
+    var sheets = workbook && workbook.SheetNames ? workbook.SheetNames : [];
+    var exportSheet = sheets.find(function (name) {
+      return cruzamentoNormalizeHeader(name) === 'EXPORT';
+    });
+
+    return exportSheet || sheets[0] || '';
+  }
+
+  function cruzamentoWorkbookRows(XLSX, workbook) {
+    var sheetName = cruzamentoPickSheetName(workbook);
+    var rows;
+
+    if (!sheetName) return null;
+
+    rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+    return rows.filter(function (row) {
+      return row.some(function (cell) { return String(cell == null ? '' : cell).trim() !== ''; });
+    });
+  }
+
   function cruzamentoNormalizeHeader(value) {
-    return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/[_\r\n\t]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+  }
+
+  function cruzamentoAliases(keyOrName) {
+    return cruzamentoHeaderAliasGroups[keyOrName] || [keyOrName];
+  }
+
+  function cruzamentoHeaderIndex(map, keyOrName) {
+    var aliases = cruzamentoAliases(keyOrName);
+    var idx;
+
+    for (var i = 0; i < aliases.length; i += 1) {
+      idx = map[cruzamentoNormalizeHeader(aliases[i])];
+      if (idx !== undefined) return idx;
+    }
+
+    return undefined;
   }
 
   function cruzamentoFindHeaderRow(rows) {
     for (var i = 0; i < rows.length; i += 1) {
-      var normalized = rows[i].map(cruzamentoNormalizeHeader);
+      var map = cruzamentoHeaderMap(rows[i]);
       if (
-        normalized.indexOf('CODIGO DESCRICAO') >= 0 ||
-        normalized.indexOf('ESTOQUE') >= 0 ||
-        normalized.indexOf('CODIGO_PRODUTO') >= 0 ||
-        normalized.indexOf('R$ RUPTURA') >= 0
+        cruzamentoHeaderIndex(map, 'codigoDescricao') !== undefined ||
+        cruzamentoHeaderIndex(map, 'codigoProduto') !== undefined ||
+        cruzamentoHeaderIndex(map, 'valorRuptura') !== undefined ||
+        cruzamentoHeaderIndex(map, 'excessoQtd') !== undefined
       ) {
         return i;
       }
@@ -138,9 +209,11 @@
   }
 
   function cruzamentoValidateHeaders(headers, required) {
-    var normalized = headers.map(cruzamentoNormalizeHeader);
-    var missing = required.filter(function (name) {
-      return normalized.indexOf(name) < 0;
+    var map = cruzamentoHeaderMap(headers);
+    var missing = required.filter(function (item) {
+      return cruzamentoHeaderIndex(map, item.key) === undefined;
+    }).map(function (item) {
+      return item.label;
     });
     return {
       valid: missing.length === 0,
@@ -157,7 +230,7 @@
   }
 
   function cruzamentoCell(row, map, name) {
-    var idx = map[cruzamentoNormalizeHeader(name)];
+    var idx = cruzamentoHeaderIndex(map, name);
     return idx === undefined ? '' : row[idx];
   }
 
@@ -167,31 +240,38 @@
 
   function cruzamentoSplitCodigoDescricao(value) {
     var text = String(value || '').trim();
-    var match = text.match(/^(\d+)\s*[-–—]?\s*(.*)$/);
+    var match = text.match(/^(\d+)\s*[-\u2013\u2014]?\s*(.*)$/);
     return {
       codigo: match ? match[1] : cruzamentoCode(text),
       descricao: match ? match[2].trim() : text
     };
   }
 
-  function cruzamentoNumber(value) {
+  function cruzamentoNumber(value, opts) {
+    var options = opts || {};
     var text = String(value == null ? '' : value).trim();
     var negative = /^\(.*\)$/.test(text) || /^-/.test(text);
+    var isPercent = text.indexOf('%') >= 0 || options.percent;
     var normalized;
 
-    if (typeof value === 'number') return value;
-    if (!text) return 0;
+    if (typeof value === 'number') {
+      return options.percent && value > 1 ? value / 100 : value;
+    }
+    if (!text) return null;
 
-    normalized = text.replace(/[R$\s%]/g, '').replace(/[()]/g, '');
+    normalized = text.replace(/[R$\s%]/g, '').replace(/[()]/g, '').replace(/^[+-]/, '');
     if (normalized.indexOf(',') >= 0) {
       normalized = normalized.replace(/\./g, '').replace(',', '.');
     }
 
-    normalized = Number(normalized) || 0;
+    normalized = Number(normalized);
+    if (!Number.isFinite(normalized)) return null;
+    if (isPercent) normalized = normalized / 100;
     return negative ? -normalized : normalized;
   }
 
   function cruzamentoFmtNumber(value) {
+    if (value === null || value === undefined || value === '') return '';
     return (Number(value) || 0).toLocaleString('pt-BR', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
@@ -199,6 +279,7 @@
   }
 
   function cruzamentoFmtMoney(value) {
+    if (value === null || value === undefined || value === '') return '';
     return (Number(value) || 0).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -243,6 +324,7 @@
     cruzamentoState.excesso.fileName = fileName || '';
     cruzamentoState.excesso.headers = [];
     cruzamentoState.excesso.rows = [];
+    cruzamentoState.excesso.items = [];
     cruzamentoState.excesso.valid = false;
     cruzamentoState.excesso.message = message;
     cruzamentoState.status = 'excesso-invalido';
@@ -278,6 +360,7 @@
     cruzamentoState.ruptura.fileName = fileName || '';
     cruzamentoState.ruptura.headers = [];
     cruzamentoState.ruptura.rows = [];
+    cruzamentoState.ruptura.items = [];
     cruzamentoState.ruptura.valid = false;
     cruzamentoState.ruptura.message = message;
     cruzamentoState.status = 'ruptura-invalido';
@@ -334,6 +417,7 @@
     cruzamentoState.excesso.fileName = file.name;
     cruzamentoState.excesso.headers = [];
     cruzamentoState.excesso.rows = [];
+    cruzamentoState.excesso.items = [];
     cruzamentoState.excesso.valid = false;
     cruzamentoState.excesso.message = 'Lendo arquivo de excesso...';
     cruzamentoState.status = 'excesso-lendo';
@@ -345,7 +429,6 @@
     reader = new FileReader();
     reader.onload = function (evt) {
       var workbook;
-      var sheetName;
       var rows;
       var headerIndex;
       var headers;
@@ -354,16 +437,11 @@
 
       try {
         workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-        sheetName = workbook.SheetNames[0];
-        if (!sheetName) {
+        rows = cruzamentoWorkbookRows(XLSX, workbook);
+        if (!rows) {
           cruzamentoSetExcessoError(file.name, 'A planilha nao possui abas para leitura.');
           return;
         }
-
-        rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
-        rows = rows.filter(function (row) {
-          return row.some(function (cell) { return String(cell || '').trim() !== ''; });
-        });
 
         if (!rows.length) {
           cruzamentoSetExcessoError(file.name, 'A planilha de excesso esta vazia.');
@@ -379,6 +457,7 @@
         cruzamentoState.excesso.headers = headers;
         cruzamentoState.excesso.rows = dataRows;
         cruzamentoState.excesso.valid = validation.valid;
+        cruzamentoState.excesso.items = validation.valid ? cruzamentoParseExcessoRows(dataRows, headers) : [];
         cruzamentoState.excesso.message = validation.valid
           ? 'Arquivo de excesso validado com sucesso.'
           : 'Cabecalhos ausentes: ' + validation.missing.join(', ');
@@ -419,6 +498,7 @@
     cruzamentoState.ruptura.fileName = file.name;
     cruzamentoState.ruptura.headers = [];
     cruzamentoState.ruptura.rows = [];
+    cruzamentoState.ruptura.items = [];
     cruzamentoState.ruptura.valid = false;
     cruzamentoState.ruptura.message = 'Lendo arquivo de ruptura...';
     cruzamentoState.status = 'ruptura-lendo';
@@ -430,7 +510,6 @@
     reader = new FileReader();
     reader.onload = function (evt) {
       var workbook;
-      var sheetName;
       var rows;
       var headerIndex;
       var headers;
@@ -439,16 +518,11 @@
 
       try {
         workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-        sheetName = workbook.SheetNames[0];
-        if (!sheetName) {
+        rows = cruzamentoWorkbookRows(XLSX, workbook);
+        if (!rows) {
           cruzamentoSetRupturaError(file.name, 'A planilha nao possui abas para leitura.');
           return;
         }
-
-        rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
-        rows = rows.filter(function (row) {
-          return row.some(function (cell) { return String(cell || '').trim() !== ''; });
-        });
 
         if (!rows.length) {
           cruzamentoSetRupturaError(file.name, 'A planilha de ruptura esta vazia.');
@@ -464,6 +538,7 @@
         cruzamentoState.ruptura.headers = headers;
         cruzamentoState.ruptura.rows = dataRows;
         cruzamentoState.ruptura.valid = validation.valid;
+        cruzamentoState.ruptura.items = validation.valid ? cruzamentoParseRupturaRows(dataRows, headers) : [];
         cruzamentoState.ruptura.message = validation.valid
           ? 'Arquivo de ruptura validado com sucesso.'
           : 'Cabecalhos ausentes: ' + validation.missing.join(', ');
@@ -482,39 +557,64 @@
     reader.readAsArrayBuffer(file);
   }
 
-  function cruzamentoParseExcessoRows() {
-    var map = cruzamentoHeaderMap(cruzamentoState.excesso.headers);
-    return cruzamentoState.excesso.rows.map(function (row) {
-      var codDesc = cruzamentoSplitCodigoDescricao(cruzamentoCell(row, map, 'CODIGO DESCRICAO'));
+  function cruzamentoParseExcessoRows(rows, headers) {
+    var sourceRows = rows || cruzamentoState.excesso.rows;
+    var map = cruzamentoHeaderMap(headers || cruzamentoState.excesso.headers);
+    return sourceRows.map(function (row) {
+      var codDesc = cruzamentoSplitCodigoDescricao(cruzamentoCell(row, map, 'codigoDescricao'));
+      var percExcesso = cruzamentoNumber(cruzamentoCell(row, map, 'percExcesso'), { percent: true });
+      var valorExcesso = cruzamentoNumber(cruzamentoCell(row, map, 'valorExcesso'));
+      var valorEstoque = cruzamentoNumber(cruzamentoCell(row, map, 'valorEstoque'));
       return {
         codigo: cruzamentoCode(codDesc.codigo),
         descricao: codDesc.descricao,
-        estoque: cruzamentoNumber(cruzamentoCell(row, map, 'ESTOQUE')),
-        mediaDia: cruzamentoNumber(cruzamentoCell(row, map, 'MEDIA DIA')),
-        cobertura: cruzamentoNumber(cruzamentoCell(row, map, 'COBERTURA')),
-        excessoQtd: cruzamentoNumber(cruzamentoCell(row, map, 'EXCESSO')),
-        excessoValor: cruzamentoNumber(cruzamentoCell(row, map, 'R$ EXCESSO')),
-        estoqueValor: cruzamentoNumber(cruzamentoCell(row, map, 'R$ ESTOQUE')),
-        classeGeral: String(cruzamentoCell(row, map, 'CLASSE GERAL') || '').trim().toUpperCase(),
-        classeFilial: String(cruzamentoCell(row, map, 'CLASSE FILIAL') || '').trim().toUpperCase()
+        estoque: cruzamentoNumber(cruzamentoCell(row, map, 'estoque')),
+        mediaDia: cruzamentoNumber(cruzamentoCell(row, map, 'mediaDia')),
+        cobertura: cruzamentoNumber(cruzamentoCell(row, map, 'cobertura')),
+        excessoQtd: cruzamentoNumber(cruzamentoCell(row, map, 'excessoQtd')),
+        percExcesso: percExcesso,
+        valorExcesso: valorExcesso,
+        valorEstoque: valorEstoque,
+        excessoValor: valorExcesso,
+        estoqueValor: valorEstoque,
+        percentDisplay: percExcesso === null ? '' : cruzamentoFmtNumber(percExcesso * 100) + '%',
+        display: {
+          estoque: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'estoque'))),
+          mediaDia: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'mediaDia'))),
+          cobertura: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'cobertura'))),
+          excessoQtd: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'excessoQtd'))),
+          percExcesso: percExcesso === null ? '' : cruzamentoFmtNumber(percExcesso * 100) + '%',
+          valorExcesso: cruzamentoFmtMoney(valorExcesso),
+          valorEstoque: cruzamentoFmtMoney(valorEstoque)
+        },
+        classeGeral: String(cruzamentoCell(row, map, 'classeGeral') || '').trim().toUpperCase(),
+        classeFilialExcesso: String(cruzamentoCell(row, map, 'classeFilial') || '').trim().toUpperCase()
       };
     }).filter(function (item) {
       return item.codigo;
     });
   }
 
-  function cruzamentoParseRupturaRows() {
-    var map = cruzamentoHeaderMap(cruzamentoState.ruptura.headers);
-    return cruzamentoState.ruptura.rows.map(function (row) {
+  function cruzamentoParseRupturaRows(rows, headers) {
+    var sourceRows = rows || cruzamentoState.ruptura.rows;
+    var map = cruzamentoHeaderMap(headers || cruzamentoState.ruptura.headers);
+    return sourceRows.map(function (row) {
       return {
-        codigo: cruzamentoCode(cruzamentoCell(row, map, 'CODIGO_PRODUTO')),
-        descricao: String(cruzamentoCell(row, map, 'DESCRICAO') || '').trim(),
-        rupturaValor: cruzamentoNumber(cruzamentoCell(row, map, 'R$ RUPTURA')),
-        dez: cruzamentoNumber(cruzamentoCell(row, map, 'DEZ')),
-        mediaDia: cruzamentoNumber(cruzamentoCell(row, map, 'MEDIA DIA')),
-        custo: cruzamentoNumber(cruzamentoCell(row, map, 'CUSTO')),
-        classeGeral: String(cruzamentoCell(row, map, 'CLASSE GERAL') || '').trim().toUpperCase(),
-        classeFilial: String(cruzamentoCell(row, map, 'CLASSE FILIAL') || '').trim().toUpperCase()
+        codigo: cruzamentoCode(cruzamentoCell(row, map, 'codigoProduto')),
+        descricao: String(cruzamentoCell(row, map, 'descricao') || '').trim(),
+        valorRuptura: cruzamentoNumber(cruzamentoCell(row, map, 'valorRuptura')),
+        rupturaValor: cruzamentoNumber(cruzamentoCell(row, map, 'valorRuptura')),
+        dez: cruzamentoNumber(cruzamentoCell(row, map, 'dez')),
+        mediaDiaRuptura: cruzamentoNumber(cruzamentoCell(row, map, 'mediaDia')),
+        custo: cruzamentoNumber(cruzamentoCell(row, map, 'custo')),
+        display: {
+          valorRuptura: cruzamentoFmtMoney(cruzamentoNumber(cruzamentoCell(row, map, 'valorRuptura'))),
+          dez: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'dez'))),
+          mediaDiaRuptura: cruzamentoFmtNumber(cruzamentoNumber(cruzamentoCell(row, map, 'mediaDia'))),
+          custo: cruzamentoFmtMoney(cruzamentoNumber(cruzamentoCell(row, map, 'custo')))
+        },
+        classeGeral: String(cruzamentoCell(row, map, 'classeGeral') || '').trim().toUpperCase(),
+        classeFilialRuptura: String(cruzamentoCell(row, map, 'classeFilial') || '').trim().toUpperCase()
       };
     }).filter(function (item) {
       return item.codigo;
@@ -522,9 +622,12 @@
   }
 
   function cruzamentoBuildResultado(excesso, ruptura) {
-    var necessidade = Math.max(0, ruptura.dez || 0);
-    var sugerida = Math.max(0, Math.min(excesso.excessoQtd || 0, necessidade || excesso.excessoQtd || 0));
-    var valorTransferencia = sugerida * (ruptura.custo || 0);
+    var necessidade = ruptura.dez === null ? null : Math.max(0, ruptura.dez || 0);
+    var excessoQtd = excesso.excessoQtd === null ? 0 : excesso.excessoQtd || 0;
+    var sugerida = necessidade === null
+      ? Math.max(0, excessoQtd)
+      : Math.max(0, Math.min(excessoQtd, necessidade));
+    var valorTransferencia = ruptura.custo === null ? null : sugerida * (ruptura.custo || 0);
     var observacao = sugerida > 0 ? 'Sugestao inicial' : 'Sem quantidade sugerida';
 
     return {
@@ -533,17 +636,17 @@
       filialOrigem: cruzamentoState.excesso.filial || '-',
       filialDestino: cruzamentoState.ruptura.filial || '-',
       classeGeral: excesso.classeGeral || ruptura.classeGeral,
-      classeExcesso: excesso.classeFilial,
-      classeRuptura: ruptura.classeFilial,
+      classeExcesso: excesso.classeFilialExcesso,
+      classeRuptura: ruptura.classeFilialRuptura,
       estoqueOrigem: excesso.estoque,
       excessoQtd: excesso.excessoQtd,
       cobertura: excesso.cobertura,
       mediaDiaExcesso: excesso.mediaDia,
-      excessoValor: excesso.excessoValor,
-      estoqueValor: excesso.estoqueValor,
-      rupturaValor: ruptura.rupturaValor,
+      excessoValor: excesso.valorExcesso,
+      estoqueValor: excesso.valorEstoque,
+      rupturaValor: ruptura.valorRuptura,
       dez: ruptura.dez,
-      mediaDiaRuptura: ruptura.mediaDia,
+      mediaDiaRuptura: ruptura.mediaDiaRuptura,
       custo: ruptura.custo,
       qtdNecessaria: necessidade,
       qtdSugerida: sugerida,
@@ -553,8 +656,8 @@
   }
 
   function cruzamentoAnalisar() {
-    var excessoRows = cruzamentoParseExcessoRows();
-    var rupturaRows = cruzamentoParseRupturaRows();
+    var excessoRows = cruzamentoState.excesso.items.length ? cruzamentoState.excesso.items : cruzamentoParseExcessoRows();
+    var rupturaRows = cruzamentoState.ruptura.items.length ? cruzamentoState.ruptura.items : cruzamentoParseRupturaRows();
     var excessoPorCodigo = {};
     var resultados = [];
 
@@ -644,8 +747,8 @@
   function cruzamentoRenderKpis() {
     var totals = cruzamentoTotals();
     var values = {
-      'cruzamento-kpi-excesso': cruzamentoState.excesso.rows.length,
-      'cruzamento-kpi-ruptura': cruzamentoState.ruptura.rows.length,
+      'cruzamento-kpi-excesso': cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length,
+      'cruzamento-kpi-ruptura': cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length,
       'cruzamento-kpi-comum': cruzamentoState.resultados.length,
       'cruzamento-kpi-filtrados': cruzamentoState.resultadosFiltrados.length,
       'cruzamento-kpi-rup-valor': cruzamentoFmtMoney(totals.rupturaValor),
@@ -843,6 +946,7 @@
       filial: '',
       headers: [],
       rows: [],
+      items: [],
       valid: false,
       message: 'Aguardando arquivo de excesso.'
     };
@@ -851,6 +955,7 @@
       filial: '',
       headers: [],
       rows: [],
+      items: [],
       valid: false,
       message: 'Aguardando arquivo de ruptura.'
     };
