@@ -216,6 +216,46 @@ body {
   margin-top: 0;
 }
 
+.filtros-panel {
+  margin-bottom: 10px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 7px;
+  align-items: end;
+}
+
+.filters-grid label {
+  display: grid;
+  gap: 2px;
+  color: #553300;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.filter-search {
+  grid-column: span 2;
+}
+
+.check-line {
+  display: flex !important;
+  align-items: center;
+  gap: 6px !important;
+  min-height: 22px;
+  padding: 3px 6px;
+  border: 1px solid #c09000;
+  background: #fff7d5;
+  text-transform: none !important;
+}
+
+.check-line input {
+  width: 14px;
+  height: 14px;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid #777;
@@ -306,11 +346,14 @@ th {
 
   .flow-strip,
   .kpi-grid,
-  .panel-grid {
+  .panel-grid,
+  .filters-grid {
     grid-template-columns: 1fr;
   }
 
-  .search-input {
+  .search-input,
+  .filter-search {
     max-width: none;
+    grid-column: auto;
   }
 }
