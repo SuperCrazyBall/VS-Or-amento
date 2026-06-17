@@ -11,6 +11,14 @@
       rows: [],
       valid: false,
       message: 'Aguardando arquivo de excesso.'
+    },
+    ruptura: {
+      fileName: '',
+      filial: '',
+      headers: [],
+      rows: [],
+      valid: false,
+      message: 'Aguardando arquivo de ruptura.'
     }
   };
 
@@ -20,6 +28,14 @@
     'MEDIA DIA',
     'COBERTURA',
     'EXCESSO'
+  ];
+
+  var cruzamentoRupturaRequiredHeaders = [
+    'CODIGO_PRODUTO',
+    'DESCRICAO',
+    'R$ RUPTURA',
+    'MEDIA DIA',
+    'CUSTO'
   ];
 
   function cruzamentoGetCurrentUser() {
@@ -91,7 +107,12 @@
   function cruzamentoFindHeaderRow(rows) {
     for (var i = 0; i < rows.length; i += 1) {
       var normalized = rows[i].map(cruzamentoNormalizeHeader);
-      if (normalized.indexOf('CODIGO DESCRICAO') >= 0 || normalized.indexOf('ESTOQUE') >= 0) {
+      if (
+        normalized.indexOf('CODIGO DESCRICAO') >= 0 ||
+        normalized.indexOf('ESTOQUE') >= 0 ||
+        normalized.indexOf('CODIGO_PRODUTO') >= 0 ||
+        normalized.indexOf('R$ RUPTURA') >= 0
+      ) {
         return i;
       }
     }
@@ -140,16 +161,55 @@
     cruzamentoRenderMainStatus();
   }
 
+  function cruzamentoRenderRuptura() {
+    var fileEl = document.getElementById('cruzamento-ruptura-file');
+    var linesEl = document.getElementById('cruzamento-ruptura-lines');
+    var statusEl = document.getElementById('cruzamento-ruptura-status');
+    var summaryEl = document.getElementById('cruzamento-ruptura-summary');
+    var kpiEl = document.getElementById('cruzamento-kpi-ruptura');
+    var ruptura = cruzamentoState.ruptura;
+
+    if (fileEl) fileEl.textContent = ruptura.fileName || 'Nenhum arquivo selecionado';
+    if (linesEl) linesEl.textContent = 'Linhas lidas: ' + ruptura.rows.length;
+    if (statusEl) statusEl.textContent = ruptura.message;
+    if (kpiEl) kpiEl.textContent = String(ruptura.rows.length);
+
+    if (summaryEl) {
+      summaryEl.classList.toggle('import-empty', !ruptura.fileName);
+      summaryEl.classList.toggle('import-ok', ruptura.valid);
+      summaryEl.classList.toggle('import-error', !!ruptura.fileName && !ruptura.valid);
+    }
+  }
+
+  function cruzamentoSetRupturaError(fileName, message) {
+    cruzamentoState.ruptura.fileName = fileName || '';
+    cruzamentoState.ruptura.headers = [];
+    cruzamentoState.ruptura.rows = [];
+    cruzamentoState.ruptura.valid = false;
+    cruzamentoState.ruptura.message = message;
+    cruzamentoState.status = 'ruptura-invalido';
+    cruzamentoRenderRuptura();
+    cruzamentoRenderMainStatus();
+  }
+
   function cruzamentoRenderMainStatus() {
     var status = document.getElementById('cruzamento-status');
     if (!status) return;
     status.setAttribute('data-state', cruzamentoState.status);
     if (cruzamentoState.status === 'excesso-lendo') {
       status.textContent = 'Lendo arquivo de excesso...';
+    } else if (cruzamentoState.status === 'ruptura-lendo') {
+      status.textContent = 'Lendo arquivo de ruptura...';
     } else if (cruzamentoState.status === 'excesso-invalido') {
       status.textContent = 'Corrija o arquivo de excesso.';
+    } else if (cruzamentoState.status === 'ruptura-invalido') {
+      status.textContent = 'Corrija o arquivo de ruptura.';
+    } else if (cruzamentoState.excesso.valid && cruzamentoState.ruptura.valid) {
+      status.textContent = 'Excesso e ruptura importados. Pronto para proximas etapas.';
     } else if (cruzamentoState.excesso.valid) {
       status.textContent = 'Excesso importado. Aguardando ruptura.';
+    } else if (cruzamentoState.ruptura.valid) {
+      status.textContent = 'Ruptura importada. Aguardando excesso.';
     } else {
       status.textContent = 'Aguardando importacoes';
     }
@@ -237,6 +297,88 @@
     reader.readAsArrayBuffer(file);
   }
 
+  function cruzamentoReadRupturaFile(file) {
+    var XLSX = cruzamentoGetXLSX();
+    var reader;
+
+    if (!file) {
+      cruzamentoSetRupturaError('', 'Aguardando arquivo de ruptura.');
+      return;
+    }
+
+    if (!/\.xlsx$/i.test(file.name)) {
+      cruzamentoSetRupturaError(file.name, 'Selecione um arquivo .xlsx valido.');
+      return;
+    }
+
+    if (!XLSX) {
+      cruzamentoSetRupturaError(file.name, 'Biblioteca de leitura XLSX nao encontrada no sistema principal.');
+      return;
+    }
+
+    cruzamentoState.ruptura.fileName = file.name;
+    cruzamentoState.ruptura.headers = [];
+    cruzamentoState.ruptura.rows = [];
+    cruzamentoState.ruptura.valid = false;
+    cruzamentoState.ruptura.message = 'Lendo arquivo de ruptura...';
+    cruzamentoState.status = 'ruptura-lendo';
+    cruzamentoRenderRuptura();
+    cruzamentoRenderMainStatus();
+
+    reader = new FileReader();
+    reader.onload = function (evt) {
+      var workbook;
+      var sheetName;
+      var rows;
+      var headerIndex;
+      var headers;
+      var dataRows;
+      var validation;
+
+      try {
+        workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+        sheetName = workbook.SheetNames[0];
+        if (!sheetName) {
+          cruzamentoSetRupturaError(file.name, 'A planilha nao possui abas para leitura.');
+          return;
+        }
+
+        rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+        rows = rows.filter(function (row) {
+          return row.some(function (cell) { return String(cell || '').trim() !== ''; });
+        });
+
+        if (!rows.length) {
+          cruzamentoSetRupturaError(file.name, 'A planilha de ruptura esta vazia.');
+          return;
+        }
+
+        headerIndex = cruzamentoFindHeaderRow(rows);
+        headers = rows[headerIndex] || [];
+        dataRows = rows.slice(headerIndex + 1);
+        validation = cruzamentoValidateHeaders(headers, cruzamentoRupturaRequiredHeaders);
+
+        cruzamentoState.ruptura.fileName = file.name;
+        cruzamentoState.ruptura.headers = headers;
+        cruzamentoState.ruptura.rows = dataRows;
+        cruzamentoState.ruptura.valid = validation.valid;
+        cruzamentoState.ruptura.message = validation.valid
+          ? 'Arquivo de ruptura validado com sucesso.'
+          : 'Cabecalhos ausentes: ' + validation.missing.join(', ');
+        cruzamentoState.status = validation.valid ? 'ruptura-ok' : 'ruptura-invalido';
+
+        cruzamentoRenderRuptura();
+        cruzamentoRenderMainStatus();
+      } catch (err) {
+        cruzamentoSetRupturaError(file.name, 'Falha ao ler a planilha de ruptura.');
+      }
+    };
+    reader.onerror = function () {
+      cruzamentoSetRupturaError(file.name, 'Falha ao abrir o arquivo selecionado.');
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
   function cruzamentoBindExcessoImport() {
     var input = document.getElementById('cruzamento-excesso-input');
     var filial = document.getElementById('cruzamento-excesso-filial');
@@ -254,6 +396,25 @@
     }
 
     cruzamentoRenderExcesso();
+  }
+
+  function cruzamentoBindRupturaImport() {
+    var input = document.getElementById('cruzamento-ruptura-input');
+    var filial = document.getElementById('cruzamento-ruptura-filial');
+
+    if (input) {
+      input.addEventListener('change', function () {
+        cruzamentoReadRupturaFile(input.files && input.files[0]);
+      });
+    }
+
+    if (filial) {
+      filial.addEventListener('input', function () {
+        cruzamentoState.ruptura.filial = filial.value.trim();
+      });
+    }
+
+    cruzamentoRenderRuptura();
   }
 
   function cruzamentoRenderAccess() {
@@ -284,6 +445,7 @@
   }
 
   cruzamentoBindExcessoImport();
+  cruzamentoBindRupturaImport();
   cruzamentoRenderAccess();
   cruzamentoWatchAccess();
 })();
