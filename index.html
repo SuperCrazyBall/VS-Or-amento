@@ -4001,6 +4001,7 @@ tbody tr.row-p {
   <!-- ABAS -->
   <div id="tabsbar">
     <div class="tab-btn active" id="t-import" onclick="switchTab('pane-import')">📋 Pedido de Venda</div>
+    <div class="tab-btn" id="t-cruzamento" onclick="switchTab('pane-cruzamento')">⇄ Cruzamento Estoque</div>
     <div class="tab-btn" id="t-hist" onclick="switchTab('pane-hist')">🗂 Histórico</div>
     <div class="tab-btn" id="t-ana" onclick="switchTab('pane-ana')">📈 Relatórios Analíticos</div>
   </div>
@@ -4197,6 +4198,15 @@ tbody tr.row-p {
         </div>
       </div><!-- /ws -->
     </div><!-- /pane-import -->
+
+    <!-- ── ABA: CRUZAMENTO ESTOQUE/RUPTURA ── -->
+    <div id="pane-cruzamento" class="pane">
+      <iframe
+        title="Cruzamento Estoque/Ruptura"
+        src="modulos/cruzamento-transferencia/index.html"
+        style="width:100%;height:calc(100vh - 124px);border:0;display:block;background:#F5EDD8">
+      </iframe>
+    </div>
 
     <!-- ── ABA: HISTÓRICO ── -->
     <div id="pane-hist" class="pane">
@@ -5618,14 +5628,14 @@ function cpCod(c){navigator.clipboard.writeText(c).then(function(){toast('📋 '
 // ABAS
 // ════════════════════════════════════════════════════════════
 function switchTab(id){
-  // GERENTE não acessa aba Pedido de Venda
-  if (CURRENT_USER && CURRENT_USER.role === 'viewer' && id === 'pane-import') {
+  // GERENTE não acessa abas operacionais
+  if (CURRENT_USER && CURRENT_USER.role === 'viewer' && (id === 'pane-import' || id === 'pane-cruzamento')) {
     id = 'pane-hist';
   }
   document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('active');});
   var pane = document.getElementById(id);
   if (pane) pane.classList.add('active');
-  var map={'pane-import':'t-import','pane-hist':'t-hist','pane-ana':'t-ana'};
+  var map={'pane-import':'t-import','pane-cruzamento':'t-cruzamento','pane-hist':'t-hist','pane-ana':'t-ana'};
   document.querySelectorAll('.tab-btn').forEach(function(t){t.classList.remove('active');});
   if(map[id]){var tb=document.getElementById(map[id]);if(tb)tb.classList.add('active');}
   if(id==='pane-hist'){fillFils();renderHist();}
@@ -6726,8 +6736,12 @@ function applyPerms() {
   // GERENTE: ocultar aba "Pedido de Venda" e redirecionar para Histórico
   var tabImport = document.getElementById('t-import');
   var paneImport = document.getElementById('pane-import');
+  var tabCruzamento = document.getElementById('t-cruzamento');
+  var paneCruzamento = document.getElementById('pane-cruzamento');
   if (tabImport) tabImport.style.display = 'none';
   if (paneImport) paneImport.style.display = 'none';
+  if (tabCruzamento) tabCruzamento.style.display = 'none';
+  if (paneCruzamento) paneCruzamento.style.display = 'none';
   // Ativar aba Histórico como padrão
   switchTab('pane-hist');
 }
