@@ -220,6 +220,25 @@ body {
   margin-bottom: 10px;
 }
 
+.actions-panel {
+  margin-bottom: 10px;
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.vbtn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  color: #666;
+  background: #d8d8d8;
+  border-color: #eee #999 #999 #eee;
+}
+
 .filters-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -279,6 +298,16 @@ td {
 th {
   background: #f0d57b;
   color: #111;
+}
+
+th[data-sort] {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .empty-cell {
