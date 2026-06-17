@@ -90,6 +90,65 @@
           </article>
         </section>
 
+        <section class="vs-panel filtros-panel">
+          <div class="vs-panel-hd">Filtros da Analise</div>
+          <div class="vs-panel-bd">
+            <div class="filters-grid">
+              <label>
+                Classe Geral
+                <select id="cruzamento-filtro-classe-geral" class="vs-input">
+                  <option value="">Todos</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </label>
+              <label>
+                Classe Filial Excesso
+                <select id="cruzamento-filtro-classe-excesso" class="vs-input">
+                  <option value="">Todos</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </label>
+              <label>
+                Classe Filial Ruptura
+                <select id="cruzamento-filtro-classe-ruptura" class="vs-input">
+                  <option value="">Todos</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </label>
+              <label>
+                R$ Ruptura minimo
+                <input id="cruzamento-filtro-valor-ruptura" class="vs-input" type="number" min="0" step="0.01" value="0">
+              </label>
+              <label>
+                Excesso minimo
+                <input id="cruzamento-filtro-qtd-excesso" class="vs-input" type="number" min="0" step="1" value="0">
+              </label>
+              <label>
+                Cobertura minima
+                <input id="cruzamento-filtro-cobertura-min" class="vs-input" type="number" min="0" step="0.01" value="">
+              </label>
+              <label>
+                Cobertura maxima
+                <input id="cruzamento-filtro-cobertura-max" class="vs-input" type="number" min="0" step="0.01" value="">
+              </label>
+              <label class="filter-search">
+                Codigo ou descricao
+                <input id="cruzamento-filtro-busca" class="vs-input" type="text" value="" placeholder="Buscar produto ou codigo">
+              </label>
+              <label class="check-line">
+                <input id="cruzamento-filtro-sugestao" type="checkbox">
+                Somente sugestao maior que zero
+              </label>
+            </div>
+          </div>
+        </section>
+
         <section class="vs-panel results-panel">
           <div class="vs-panel-hd">Resultado do Cruzamento</div>
           <div class="vs-panel-bd">
