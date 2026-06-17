@@ -38,7 +38,7 @@
           </div>
           <div class="kpi-box">
             <span>Itens em ruptura</span>
-            <strong>0</strong>
+            <strong id="cruzamento-kpi-ruptura">0</strong>
           </div>
           <div class="kpi-box">
             <span>Codigos em comum</span>
@@ -73,14 +73,19 @@
           <article class="mini-panel">
             <div class="mini-hd">2. Importar Ruptura da Filial Destino</div>
             <div class="mini-bd">
-              <div class="file-drop">
-                <strong>Nenhum arquivo selecionado</strong>
+              <div id="cruzamento-ruptura-drop" class="file-drop">
+                <strong id="cruzamento-ruptura-file">Nenhum arquivo selecionado</strong>
                 <span class="muted">Arquivo esperado: .xlsx com produto, custo, media e ruptura.</span>
+                <input id="cruzamento-ruptura-input" class="vs-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
               </div>
               <label>
                 Filial destino
-                <input class="vs-input" type="text" value="" disabled>
+                <input id="cruzamento-ruptura-filial" class="vs-input" type="text" value="" placeholder="Digite a filial destino">
               </label>
+              <div id="cruzamento-ruptura-summary" class="import-summary import-empty">
+                <span id="cruzamento-ruptura-lines">Linhas lidas: 0</span>
+                <strong id="cruzamento-ruptura-status">Aguardando arquivo de ruptura.</strong>
+              </div>
             </div>
           </article>
         </section>
