@@ -42,11 +42,23 @@
           </div>
           <div class="kpi-box">
             <span>Codigos em comum</span>
-            <strong>0</strong>
+            <strong id="cruzamento-kpi-comum">0</strong>
+          </div>
+          <div class="kpi-box">
+            <span>Itens apos filtros</span>
+            <strong id="cruzamento-kpi-filtrados">0</strong>
+          </div>
+          <div class="kpi-box">
+            <span>R$ Ruptura filtrada</span>
+            <strong id="cruzamento-kpi-rup-valor">R$ 0,00</strong>
+          </div>
+          <div class="kpi-box">
+            <span>R$ Excesso filtrado</span>
+            <strong id="cruzamento-kpi-exc-valor">R$ 0,00</strong>
           </div>
           <div class="kpi-box">
             <span>Transferencia sugerida</span>
-            <strong>R$ 0,00</strong>
+            <strong id="cruzamento-kpi-transferencia">R$ 0,00</strong>
           </div>
         </section>
 
@@ -174,17 +186,32 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Codigo</th>
-                    <th>Produto</th>
-                    <th>Excesso Origem</th>
-                    <th>Ruptura Destino</th>
-                    <th>Sugestao</th>
-                    <th>Valor</th>
+                    <th data-sort="codigo">Codigo</th>
+                    <th data-sort="descricao">Descricao</th>
+                    <th>Filial Origem</th>
+                    <th>Filial Destino</th>
+                    <th data-sort="classeGeral">Classe Geral</th>
+                    <th>Classe Filial Excesso</th>
+                    <th>Classe Filial Ruptura</th>
+                    <th>Estoque Origem</th>
+                    <th data-sort="excessoQtd">Excesso Qtd</th>
+                    <th>Cobertura</th>
+                    <th>Media Dia Excesso</th>
+                    <th>R$ Excesso</th>
+                    <th>R$ Estoque</th>
+                    <th data-sort="rupturaValor">R$ Ruptura</th>
+                    <th>DEZ</th>
+                    <th>Media Dia Ruptura</th>
+                    <th>Custo</th>
+                    <th>Qtd Necessaria Estimada</th>
+                    <th data-sort="qtdSugerida">Qtd Sugerida Transferir</th>
+                    <th>Valor Estimado Transferencia</th>
+                    <th>Observacao</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="cruzamento-resultado-body">
                   <tr>
-                    <td class="empty-cell" colspan="6">Importe as planilhas para visualizar o cruzamento.</td>
+                    <td class="empty-cell" colspan="21">Importe as planilhas para visualizar o cruzamento.</td>
                   </tr>
                 </tbody>
               </table>
