@@ -1,0 +1,279 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color: #111;
+  background: #f5edd8;
+}
+
+.cruzamento-shell {
+  min-height: 100vh;
+  padding: 8px;
+  background: #f5edd8;
+}
+
+.vs-panel {
+  border: 2px solid;
+  border-color: #f8f8f8 #777 #777 #f8f8f8;
+  background: #fff8e4;
+}
+
+.vs-panel-hd {
+  min-height: 24px;
+  padding: 4px 8px;
+  background: linear-gradient(180deg, #1565c0 0%, #003399 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  font-style: italic;
+}
+
+.vs-panel-bd {
+  padding: 10px;
+  background: #fff8e4;
+}
+
+.cruzamento-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cruzamento-head h1 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  line-height: 1.1;
+  color: #111;
+}
+
+.intro {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.status {
+  padding: 8px;
+  border: 1px solid #c09000;
+  background: #fff0a8;
+  color: #553300;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.flow-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.flow-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px;
+  border: 1px solid #b98500;
+  background: linear-gradient(180deg, #fff7c8 0%, #ffd166 100%);
+  font-weight: bold;
+}
+
+.flow-step strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #333;
+  background: #fff;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.kpi-box {
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 2px solid;
+  border-color: #fff #9d8a54 #9d8a54 #fff;
+  background: #fffbe9;
+}
+
+.kpi-box span {
+  display: block;
+  margin-bottom: 5px;
+  color: #4b3a00;
+  font-weight: bold;
+}
+
+.kpi-box strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mini-panel {
+  border: 2px solid;
+  border-color: #fff #777 #777 #fff;
+  background: #fff8e4;
+}
+
+.mini-hd {
+  padding: 4px 8px;
+  background: #2c9fca;
+  color: #000;
+  font-weight: bold;
+}
+
+.mini-bd {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+}
+
+.file-drop {
+  min-height: 62px;
+  padding: 8px;
+  border: 1px dashed #7d6d33;
+  background: #fffdf2;
+}
+
+.file-drop strong,
+.file-drop span,
+.mini-bd label {
+  display: block;
+}
+
+.muted {
+  margin-top: 4px;
+  color: #675f4c;
+}
+
+.vs-input {
+  height: 22px;
+  width: 100%;
+  padding: 2px 5px;
+  border: 1px solid #777;
+  background: #fff4ce;
+  font: inherit;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.search-input {
+  max-width: 260px;
+}
+
+.vbtn {
+  min-height: 24px;
+  padding: 3px 10px;
+  border: 2px solid;
+  border-color: #fff #777 #777 #fff;
+  background: #e8e8e8;
+  color: #111;
+  font: inherit;
+  font-weight: bold;
+}
+
+.vbtn.prim {
+  background: #fff0a8;
+}
+
+.results-panel {
+  margin-top: 0;
+}
+
+.table-wrap {
+  overflow: auto;
+  border: 1px solid #777;
+  background: #fff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+th,
+td {
+  padding: 4px 5px;
+  border: 1px solid #c9c0a3;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #f0d57b;
+  color: #111;
+}
+
+.empty-cell {
+  padding: 14px;
+  color: #675f4c;
+  text-align: center;
+}
+}
+
+.status-alert {
+  border-color: #aa0000;
+  background: #ffe0dc;
+  color: #880000;
+}
+
+.access-denied {
+  max-width: 520px;
+  margin: 20px auto;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .cruzamento-head,
+  .toolbar-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .status {
+    white-space: normal;
+  }
+
+  .flow-strip,
+  .kpi-grid,
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-input {
+    max-width: none;
+  }
+}
