@@ -76,6 +76,32 @@ body {
   color: #12531a;
 }
 
+.status[data-state="analisado"] {
+  border-color: #1c7a26;
+  background: #dff4df;
+  color: #12531a;
+}
+
+.status[data-state="carregando"] {
+  border-color: #2f6ea8;
+  background: #dfeeff;
+  color: #17476f;
+}
+
+.status[data-state="erro"] {
+  border-color: #aa0000;
+  background: #ffe0dc;
+  color: #880000;
+}
+
+.status[data-state="inicial"],
+.status[data-state="parcial"],
+.status[data-state="pronto"] {
+  border-color: #c09000;
+  background: #fff0a8;
+  color: #553300;
+}
+
 .status[data-state="acao-pendente"] {
   border-color: #c09000;
   background: #fff0a8;
@@ -325,6 +351,14 @@ td.num {
 .empty-cell {
   padding: 14px;
   color: #675f4c;
+  text-align: center;
+}
+
+.limit-cell {
+  padding: 8px;
+  background: #fff0a8;
+  color: #553300;
+  font-weight: bold;
   text-align: center;
 }
 
