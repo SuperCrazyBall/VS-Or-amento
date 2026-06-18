@@ -1,5 +1,4 @@
 (function () {
-  var CRUZAMENTO_TABLE_RENDER_LIMIT = 300;
   var CRUZAMENTO_EXCESSO_INVALID_MESSAGE = 'Esta planilha não parece ser de EXCESSO. Verifique se contém CODIGO DESCRICAO e EXCESSO.';
   var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha não parece ser de RUPTURA. Verifique se contém CODIGO_PRODUTO e R$ RUPTURA.';
 
@@ -999,7 +998,6 @@
   function cruzamentoRenderTabela() {
     var body = document.getElementById('cruzamento-resultado-body');
     var rows = cruzamentoState.resultadosFiltrados;
-    var visibleRows = rows.slice(0, CRUZAMENTO_TABLE_RENDER_LIMIT);
     var html = '';
 
     if (!body) return;
@@ -1018,17 +1016,21 @@
       return;
     }
 
-    if (rows.length > CRUZAMENTO_TABLE_RENDER_LIMIT) {
+    if (false) {
       html += '<tr><td class="limit-cell" colspan="21">Mostrando os primeiros '
-        + CRUZAMENTO_TABLE_RENDER_LIMIT
+        + rows.length
         + ' itens de '
         + rows.length
         + ' filtrados. Exportação e PDF usam todos os itens filtrados.</td></tr>';
     }
 
-    visibleRows.forEach(function (item) {
+    rows.forEach(function (item) {
       html += '<tr>';
-      html += '<td>' + cruzamentoEscape(item.codigo) + '</td>';
+      html += '<td><button class="copy-code" type="button" data-code="'
+        + cruzamentoEscape(item.codigo)
+        + '" title="Copiar código">'
+        + cruzamentoEscape(item.codigo)
+        + '</button></td>';
       html += '<td>' + cruzamentoEscape(item.descricao) + '</td>';
       html += '<td>' + cruzamentoEscape(item.filialOrigem) + '</td>';
       html += '<td>' + cruzamentoEscape(item.filialDestino) + '</td>';
@@ -1352,6 +1354,33 @@
     }
   }
 
+  function cruzamentoCopiarCodigoUnico(codigo) {
+    var text = String(codigo || '').trim();
+
+    function done(ok) {
+      cruzamentoSetStatusMessage(
+        ok ? 'Código ' + text + ' copiado.' : 'Não foi possível copiar o código.',
+        ok ? 'acao-ok' : 'acao-pendente'
+      );
+    }
+
+    if (!text) {
+      cruzamentoSetStatusMessage('Código vazio para copiar.', 'acao-pendente');
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        done(true);
+      }).catch(function () {
+        done(cruzamentoCopyFallback(text));
+      });
+      return;
+    }
+
+    done(cruzamentoCopyFallback(text));
+  }
+
   function cruzamentoCopiarCodigos() {
     var codigos = cruzamentoState.resultadosFiltrados.map(function (item) {
       return item.codigo;
@@ -1490,6 +1519,19 @@
     });
   }
 
+  function cruzamentoBindCopiarCodigoTabela() {
+    var body = document.getElementById('cruzamento-resultado-body');
+    if (!body) return;
+
+    body.addEventListener('click', function (event) {
+      var target = event.target;
+      if (!target || !target.classList || !target.classList.contains('copy-code')) return;
+
+      event.preventDefault();
+      cruzamentoCopiarCodigoUnico(target.getAttribute('data-code'));
+    });
+  }
+
   function cruzamentoRenderAccess() {
     var app = document.getElementById('cruzamento-app');
     var denied = document.getElementById('cruzamento-denied');
@@ -1522,6 +1564,7 @@
   cruzamentoBindFiltros();
   cruzamentoBindAcoes();
   cruzamentoBindOrdenacaoTabela();
+  cruzamentoBindCopiarCodigoTabela();
   cruzamentoRenderKpis();
   cruzamentoRenderTabela();
   cruzamentoRenderAccess();
