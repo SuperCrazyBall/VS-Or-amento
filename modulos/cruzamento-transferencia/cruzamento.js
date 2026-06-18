@@ -23,6 +23,7 @@
       headers: [],
       rows: [],
       items: [],
+      ignoredInvalidRows: 0,
       valid: false,
       message: 'Aguardando arquivo de ruptura.'
     },
@@ -497,7 +498,7 @@
     if (fileEl) fileEl.textContent = ruptura.fileName || 'Nenhum arquivo selecionado';
     if (linesEl) linesEl.textContent = 'Linhas lidas: ' + ruptura.rows.length;
     if (statusEl) statusEl.textContent = ruptura.message;
-    if (kpiEl) kpiEl.textContent = String(ruptura.rows.length);
+    if (kpiEl) kpiEl.textContent = String(ruptura.valid ? ruptura.items.length : ruptura.rows.length);
 
     if (summaryEl) {
       summaryEl.classList.toggle('import-empty', !ruptura.fileName);
@@ -513,6 +514,7 @@
     cruzamentoState.ruptura.headers = [];
     cruzamentoState.ruptura.rows = [];
     cruzamentoState.ruptura.items = [];
+    cruzamentoState.ruptura.ignoredInvalidRows = 0;
     cruzamentoState.ruptura.valid = false;
     cruzamentoState.ruptura.message = message;
     cruzamentoState.status = 'ruptura-invalido';
@@ -673,6 +675,7 @@
     cruzamentoState.ruptura.headers = [];
     cruzamentoState.ruptura.rows = [];
     cruzamentoState.ruptura.items = [];
+    cruzamentoState.ruptura.ignoredInvalidRows = 0;
     cruzamentoState.ruptura.valid = false;
     cruzamentoState.ruptura.message = 'Lendo arquivo de ruptura...';
     cruzamentoState.status = 'ruptura-lendo';
@@ -714,7 +717,11 @@
         cruzamentoState.ruptura.valid = validation.valid;
         cruzamentoState.ruptura.items = validation.valid ? cruzamentoParseRupturaRows(dataRows, headers) : [];
         cruzamentoState.ruptura.message = validation.valid
-          ? 'Arquivo de ruptura validado com sucesso.'
+          ? 'Planilha valida. '
+            + cruzamentoState.ruptura.items.length
+            + ' itens considerados; '
+            + cruzamentoState.ruptura.ignoredInvalidRows
+            + ' itens ignorados por ruptura/DEZ/media zerados.'
           : CRUZAMENTO_RUPTURA_INVALID_MESSAGE + ' Colunas ausentes: ' + validation.missing.join(', ');
         cruzamentoState.status = validation.valid ? 'ruptura-ok' : 'ruptura-invalido';
 
@@ -769,10 +776,20 @@
     });
   }
 
+  function cruzamentoRupturaItemValido(item) {
+    return cruzamentoHasNumber(item.valorRuptura)
+      && Number(item.valorRuptura) > 0
+      && cruzamentoHasNumber(item.dez)
+      && Number(item.dez) > 0
+      && cruzamentoHasNumber(item.mediaDiaRuptura)
+      && Number(item.mediaDiaRuptura) > 0;
+  }
+
   function cruzamentoParseRupturaRows(rows, headers) {
     var sourceRows = rows || cruzamentoState.ruptura.rows;
     var map = cruzamentoHeaderMap(headers || cruzamentoState.ruptura.headers);
-    return sourceRows.map(function (row) {
+    var ignored = 0;
+    var items = sourceRows.map(function (row) {
       return {
         codigo: cruzamentoCode(cruzamentoCell(row, map, 'codigoProduto')),
         descricao: String(cruzamentoCell(row, map, 'descricao') || '').trim(),
@@ -791,8 +808,16 @@
         classeFilialRuptura: String(cruzamentoCell(row, map, 'classeFilial') || '').trim().toUpperCase()
       };
     }).filter(function (item) {
-      return item.codigo;
+      if (!item.codigo) return false;
+      if (!cruzamentoRupturaItemValido(item)) {
+        ignored += 1;
+        return false;
+      }
+      return true;
     });
+
+    cruzamentoState.ruptura.ignoredInvalidRows = ignored;
+    return items;
   }
 
   function cruzamentoBuildResultado(excesso, ruptura) {
@@ -855,7 +880,7 @@
 
   function cruzamentoAnalisar() {
     var excessoRows = cruzamentoState.excesso.items.length ? cruzamentoState.excesso.items : cruzamentoParseExcessoRows();
-    var rupturaRows = cruzamentoState.ruptura.items.length ? cruzamentoState.ruptura.items : cruzamentoParseRupturaRows();
+    var rupturaRows = cruzamentoState.ruptura.valid ? cruzamentoState.ruptura.items : cruzamentoParseRupturaRows();
     var excessoPorCodigo = cruzamentoIndexByCodigo(excessoRows);
     var rupturaPorCodigo = cruzamentoIndexByCodigo(rupturaRows);
     var resultados = [];
@@ -970,11 +995,17 @@
     });
   }
 
+  function cruzamentoRupturaCount() {
+    return cruzamentoState.ruptura.valid
+      ? cruzamentoState.ruptura.items.length
+      : cruzamentoState.ruptura.rows.length;
+  }
+
   function cruzamentoRenderKpis() {
     var totals = cruzamentoTotals();
     var values = {
       'cruzamento-kpi-excesso': cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length,
-      'cruzamento-kpi-ruptura': cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length,
+      'cruzamento-kpi-ruptura': cruzamentoRupturaCount(),
       'cruzamento-kpi-comum': cruzamentoState.resultados.length,
       'cruzamento-kpi-filtrados': cruzamentoState.resultadosFiltrados.length,
       'cruzamento-kpi-rup-valor': cruzamentoFmtMoney(totals.rupturaValor),
@@ -1191,7 +1222,8 @@
       [],
       ['Resumo'],
       ['Itens em excesso', cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length],
-      ['Itens em ruptura', cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length],
+      ['Itens em ruptura', cruzamentoRupturaCount()],
+      ['Rupturas ignoradas', cruzamentoState.ruptura.ignoredInvalidRows || 0],
       ['Códigos em comum', cruzamentoState.resultados.length],
       ['Itens após filtros', cruzamentoState.resultadosFiltrados.length],
       ['R$ Ruptura filtrada', totals.rupturaValor],
@@ -1303,7 +1335,8 @@
     });
     html += '</div><h2>Resumo</h2><div class="kpis">'
       + '<div><strong>Itens em excesso:</strong> ' + cruzamentoEscape(cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length) + '</div>'
-      + '<div><strong>Itens em ruptura:</strong> ' + cruzamentoEscape(cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length) + '</div>'
+      + '<div><strong>Itens em ruptura:</strong> ' + cruzamentoEscape(cruzamentoRupturaCount()) + '</div>'
+      + '<div><strong>Rupturas ignoradas:</strong> ' + cruzamentoEscape(cruzamentoState.ruptura.ignoredInvalidRows || 0) + '</div>'
       + '<div><strong>Códigos em comum:</strong> ' + cruzamentoEscape(cruzamentoState.resultados.length) + '</div>'
       + '<div><strong>Itens após filtros:</strong> ' + cruzamentoEscape(cruzamentoState.resultadosFiltrados.length) + '</div>'
       + '<div><strong>R$ Ruptura filtrada:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.rupturaValor)) + '</div>'
@@ -1416,6 +1449,7 @@
       headers: [],
       rows: [],
       items: [],
+      ignoredInvalidRows: 0,
       valid: false,
       message: 'Aguardando arquivo de ruptura.'
     };
