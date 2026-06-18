@@ -398,6 +398,18 @@ textarea:focus {
   padding: 0;
 }
 
+.powerbi-rule {
+  padding: 4px 8px;
+  border-bottom: 1px solid #c09000;
+  background: #002451;
+  color: #00ff3c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: bold;
+  line-height: 15px;
+  text-align: center;
+}
+
 .table-wrap {
   min-height: 210px;
   overflow-x: auto;
