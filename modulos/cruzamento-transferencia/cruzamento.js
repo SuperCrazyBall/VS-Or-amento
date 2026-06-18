@@ -376,6 +376,10 @@
     return text || fallback || 'NAO_INFORMADO';
   }
 
+  function cruzamentoPowerBiRuleText() {
+    return 'Classe A: 45 dias | Classe B: 35 dias | Classe C: 30 dias | Período: 90 dias';
+  }
+
   function cruzamentoFiltroResumo() {
     var filtros = cruzamentoState.filtros;
     return [
@@ -410,7 +414,6 @@
       { label: 'DEZ', key: 'dez', type: 'number' },
       { label: 'Média Dia Ruptura', key: 'mediaDiaRuptura', type: 'number' },
       { label: 'Custo', key: 'custo', type: 'money' },
-      { label: 'Qtd Necessária Estimada', key: 'qtdNecessaria', type: 'number' },
       { label: 'Qtd Sugerida Transferir', key: 'qtdSugerida', type: 'number' },
       { label: 'Valor Estimado Transferência', key: 'valorTransferencia', type: 'money' },
       { label: 'Observação', key: 'observacao', type: 'text' }
@@ -794,33 +797,24 @@
 
   function cruzamentoBuildResultado(excesso, ruptura) {
     var observacoes = [];
-    var necessidade = null;
-    var excessoQtd = cruzamentoHasNumber(excesso.excessoQtd) ? Number(excesso.excessoQtd) : 0;
-    var valorRuptura = cruzamentoHasNumber(ruptura.valorRuptura) ? Number(ruptura.valorRuptura) : null;
+    var excessoQtd = cruzamentoHasNumber(excesso.excessoQtd) ? Number(excesso.excessoQtd) : null;
+    var mediaDiaExcesso = cruzamentoHasNumber(excesso.mediaDia) ? Number(excesso.mediaDia) : null;
     var custo = cruzamentoHasNumber(ruptura.custo) ? Number(ruptura.custo) : null;
-    var dez = cruzamentoHasNumber(ruptura.dez) ? Number(ruptura.dez) : null;
-    var mediaDiaRuptura = cruzamentoHasNumber(ruptura.mediaDiaRuptura) ? Number(ruptura.mediaDiaRuptura) : null;
     var sugerida = 0;
     var valorTransferencia = null;
 
-    if (valorRuptura !== null && custo !== null && custo > 0) {
-      necessidade = cruzamentoRoundQty(valorRuptura / custo);
-      observacoes.push('Necessidade por ruptura/custo');
-    } else if (dez !== null && mediaDiaRuptura !== null) {
-      necessidade = cruzamentoRoundQty(dez * mediaDiaRuptura);
-      observacoes.push('Necessidade por DEZ x média dia');
-    } else {
-      observacoes.push('Necessidade não calculada');
-    }
-
-    if (excessoQtd <= 0) {
+    if (excessoQtd === null) {
+      sugerida = 0;
+      observacoes.push('Sugestão zerada sem EXCESSO válido');
+    } else if (mediaDiaExcesso === null) {
+      sugerida = 0;
+      observacoes.push('Sugestão zerada sem MÉDIA DIA EXCESSO válida');
+    } else if (excessoQtd <= 0) {
       sugerida = 0;
       observacoes.push('Sem excesso disponivel');
-    } else if (necessidade === null) {
-      sugerida = 0;
-      observacoes.push('Sugestão zerada sem necessidade calculada');
     } else {
-      sugerida = cruzamentoRoundQty(Math.max(0, Math.min(excessoQtd, necessidade)));
+      sugerida = cruzamentoRoundQty(Math.max(0, excessoQtd * mediaDiaExcesso));
+      observacoes.push('Sugestão por EXCESSO x MÉDIA DIA');
     }
 
     if (custo !== null && custo > 0) {
@@ -853,7 +847,6 @@
       dez: ruptura.dez,
       mediaDiaRuptura: ruptura.mediaDiaRuptura,
       custo: ruptura.custo,
-      qtdNecessaria: necessidade,
       qtdSugerida: sugerida,
       valorTransferencia: valorTransferencia,
       observacao: observacoes.join('; ')
@@ -1003,25 +996,17 @@
     if (!body) return;
 
     if (!cruzamentoState.resultadoPronto) {
-      body.innerHTML = '<tr><td class="empty-cell" colspan="21">Importe as planilhas para visualizar o cruzamento.</td></tr>';
+      body.innerHTML = '<tr><td class="empty-cell" colspan="20">Importe as planilhas para visualizar o cruzamento.</td></tr>';
       return;
     }
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td class="empty-cell" colspan="21">'
+      body.innerHTML = '<tr><td class="empty-cell" colspan="20">'
         + (cruzamentoState.resultados.length
           ? 'Existem produtos em comum, mas nenhum passou nos filtros atuais.'
           : 'Nenhum produto em comum foi encontrado entre a filial em ruptura e a filial em excesso.')
         + '</td></tr>';
       return;
-    }
-
-    if (false) {
-      html += '<tr><td class="limit-cell" colspan="21">Mostrando os primeiros '
-        + rows.length
-        + ' itens de '
-        + rows.length
-        + ' filtrados. Exportação e PDF usam todos os itens filtrados.</td></tr>';
     }
 
     rows.forEach(function (item) {
@@ -1047,7 +1032,6 @@
       html += '<td class="num">' + cruzamentoFmtNumber(item.dez) + '</td>';
       html += '<td class="num">' + cruzamentoFmtNumber(item.mediaDiaRuptura) + '</td>';
       html += '<td class="num">' + cruzamentoFmtMoney(item.custo) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.qtdNecessaria) + '</td>';
       html += '<td class="num">' + cruzamentoFmtNumber(item.qtdSugerida) + '</td>';
       html += '<td class="num">' + cruzamentoFmtMoney(item.valorTransferencia) + '</td>';
       html += '<td>' + cruzamentoEscape(item.observacao) + '</td>';
@@ -1202,6 +1186,7 @@
       ['Filial destino', meta.filialDestino],
       ['Arquivo excesso', meta.arquivoExcesso],
       ['Arquivo ruptura', meta.arquivoRuptura],
+      ['Regra Power BI', cruzamentoPowerBiRuleText()],
       ['Filtros aplicados', meta.filtros.join(' | ')],
       [],
       ['Resumo'],
@@ -1298,6 +1283,7 @@
       + 'body{font-family:Arial,sans-serif;font-size:10px;color:#111;margin:14px;}'
       + 'h1{font-size:18px;margin:0 0 8px;} h2{font-size:13px;margin:14px 0 6px;}'
       + '.meta,.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px;margin-bottom:10px;}'
+      + '.rule{border:1px solid #999;background:#eee;padding:5px;margin:8px 0;font-weight:bold;}'
       + '.filters{margin:8px 0 12px;} .filters span{display:inline-block;margin:0 8px 4px 0;}'
       + 'table{width:100%;border-collapse:collapse;font-size:8px;} th,td{border:1px solid #999;padding:3px;vertical-align:top;}'
       + 'th{background:#eee;} @page{size:A4 landscape;margin:8mm;} @media print{body{margin:0;} table{page-break-inside:auto;} tr{page-break-inside:avoid;page-break-after:auto;}}'
@@ -1310,6 +1296,7 @@
       + '<div><strong>Excesso:</strong> ' + cruzamentoEscape(meta.arquivoExcesso) + '</div>'
       + '<div><strong>Ruptura:</strong> ' + cruzamentoEscape(meta.arquivoRuptura) + '</div>'
       + '</div>';
+    html += '<div class="rule"><strong>Regra Power BI:</strong> ' + cruzamentoEscape(cruzamentoPowerBiRuleText()) + '</div>';
     html += '<h2>Filtros</h2><div class="filters">';
     meta.filtros.forEach(function (filtro) {
       html += '<span>' + cruzamentoEscape(filtro) + '</span>';
