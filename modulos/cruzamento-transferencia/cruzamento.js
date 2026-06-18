@@ -109,7 +109,7 @@
         if (operatorName) {
           return {
             name: operatorName,
-            role: operatorName === 'GERENTE' ? 'viewer' : 'admin'
+            role: operatorName === 'GERENTE' ? 'viewer' : (operatorName === 'COMPRAS' ? 'compras' : 'admin')
           };
         }
       }
@@ -137,7 +137,7 @@
 
   function cruzamentoCanAccess(user) {
     if (!user) return false;
-    return user.role === 'admin' || user.name === 'TRANSFERENCIA';
+    return user.role === 'admin' || user.role === 'compras' || user.name === 'TRANSFERENCIA' || user.name === 'COMPRAS';
   }
 
   function cruzamentoSetVisible(el, visible) {
