@@ -5632,6 +5632,9 @@ function switchTab(id){
   if (CURRENT_USER && CURRENT_USER.role === 'viewer' && (id === 'pane-import' || id === 'pane-cruzamento')) {
     id = 'pane-hist';
   }
+  if (CURRENT_USER && CURRENT_USER.role === 'compras' && id === 'pane-import') {
+    id = 'pane-cruzamento';
+  }
   document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('active');});
   var pane = document.getElementById(id);
   if (pane) pane.classList.add('active');
@@ -6560,12 +6563,14 @@ function rcSort(th, field) {
 
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE USUARIOS & SINCRONIZACAO — Comercial do Norte
-// Usuário TRANSFERENCIA (senha 574092): acesso total
+// Usuário TRANSFERENCIA (senha 492715): acesso total
 // Usuário GERENTE       (senha 924057): somente leitura
+// Usuário COMPRAS       (senha 836194): leitura + Cruzamento Estoque
 // ═══════════════════════════════════════════════════════════════
 var USERS = {
-  'TRANSFERENCIA': { pw: '574092', role: 'admin'  },
-  'GERENTE':       { pw: '924057', role: 'viewer' }
+  'TRANSFERENCIA': { pw: '492715', role: 'admin'  },
+  'GERENTE':       { pw: '924057', role: 'viewer' },
+  'COMPRAS':       { pw: '836194', role: 'compras' }
 };
 var SYNC_PFX    = 'vsorc_sync_';
 var CURRENT_USER = null;
@@ -6721,8 +6726,12 @@ var VIEWER_OK = {
   renderHist:1, viewHist:1, closeM:1, closePerm:1, fillFils:1
 };
 
+function isRestrictedUser() {
+  return CURRENT_USER && (CURRENT_USER.role === 'viewer' || CURRENT_USER.role === 'compras');
+}
+
 function applyPerms() {
-  if (!CURRENT_USER || CURRENT_USER.role !== 'viewer') return;
+  if (!isRestrictedUser()) return;
 
   // Marcar botões restritos na toolbar com classe no-perm
   document.querySelectorAll('.tb-btn').forEach(function(btn) {
@@ -6740,15 +6749,19 @@ function applyPerms() {
   var paneCruzamento = document.getElementById('pane-cruzamento');
   if (tabImport) tabImport.style.display = 'none';
   if (paneImport) paneImport.style.display = 'none';
-  if (tabCruzamento) tabCruzamento.style.display = 'none';
-  if (paneCruzamento) paneCruzamento.style.display = 'none';
+  if (CURRENT_USER.role === 'viewer') {
+    if (tabCruzamento) tabCruzamento.style.display = 'none';
+    if (paneCruzamento) paneCruzamento.style.display = 'none';
+    switchTab('pane-hist');
+    return;
+  }
   // Ativar aba Histórico como padrão
-  switchTab('pane-hist');
+  switchTab('pane-cruzamento');
 }
 
 function checkPerm(action) {
   if (!CURRENT_USER) { showPerm(); return false; }
-  if (CURRENT_USER.role === 'viewer') {
+  if (isRestrictedUser()) {
     if (!VIEWER_OK[action]) { showPerm(); return false; }
   }
   return true;
@@ -6760,7 +6773,7 @@ function closePerm() { document.getElementById('perm-modal').classList.remove('o
 // ── INTERCEPTORES DE CLIQUE (somente botões .no-perm) ──────
 // Usa capture mas apenas intercepta quando o botão tem .no-perm
 document.getElementById('win').addEventListener('click', function(e) {
-  if (!CURRENT_USER || CURRENT_USER.role !== 'viewer') return;
+  if (!isRestrictedUser()) return;
   var btn = e.target.closest('.tb-btn, button');
   if (!btn || btn.classList.contains('mclose')) return;
   if (btn.classList.contains('no-perm')) {
@@ -6770,24 +6783,24 @@ document.getElementById('win').addEventListener('click', function(e) {
 
 // Bloquear importação para viewer
 document.getElementById('btn-import').addEventListener('click', function(e) {
-  if (CURRENT_USER && CURRENT_USER.role === 'viewer') {
+  if (isRestrictedUser()) {
     e.stopImmediatePropagation(); e.preventDefault(); showPerm();
   }
 }, true);
 document.getElementById('btn-upl') && document.getElementById('btn-upl').addEventListener('click', function(e) {
-  if (CURRENT_USER && CURRENT_USER.role === 'viewer') {
+  if (isRestrictedUser()) {
     e.stopImmediatePropagation(); e.preventDefault(); showPerm();
   }
 }, true);
 document.addEventListener('drop', function(e) {
-  if (CURRENT_USER && CURRENT_USER.role === 'viewer') {
+  if (isRestrictedUser()) {
     e.preventDefault(); e.stopImmediatePropagation(); showPerm();
   }
 }, true);
 
 // Teclas restritas para viewer (F1-F3, F8-F9, S/P/C/Esc)
 document.addEventListener('keydown', function(e) {
-  if (!CURRENT_USER || CURRENT_USER.role !== 'viewer') return;
+  if (!isRestrictedUser()) return;
   if (e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')) return;
   var blocked = ['F1','F2','F3','F8','F9','s','S','p','P','c','C','Escape'];
   if (blocked.indexOf(e.key) >= 0) {
