@@ -937,6 +937,7 @@
       rupturaValor: 1,
       excessoQtd: 1,
       qtdSugerida: 1,
+      valorTransferencia: 1,
       cobertura: 1
     };
 
@@ -1290,11 +1291,21 @@
     return html + '</tbody></table>';
   }
 
+  function cruzamentoGetPdfOrientation() {
+    var el = document.getElementById('cruzamento-pdf-orientacao');
+    return el && el.value === 'portrait' ? 'portrait' : 'landscape';
+  }
+
+  function cruzamentoPdfOrientationLabel(orientation) {
+    return orientation === 'portrait' ? 'Retrato' : 'Paisagem';
+  }
+
   function cruzamentoImprimirPdf() {
     var now = cruzamentoNow();
     var meta = cruzamentoReportMeta(now);
     var totals = cruzamentoTotals();
     var rows = cruzamentoReportRows(true);
+    var orientation = cruzamentoGetPdfOrientation();
     var win;
     var html;
 
@@ -1318,13 +1329,14 @@
       + '.rule{border:1px solid #999;background:#eee;padding:5px;margin:8px 0;font-weight:bold;}'
       + '.filters{margin:8px 0 12px;} .filters span{display:inline-block;margin:0 8px 4px 0;}'
       + 'table{width:100%;border-collapse:collapse;font-size:8px;} th,td{border:1px solid #999;padding:3px;vertical-align:top;}'
-      + 'th{background:#eee;} @page{size:A4 landscape;margin:8mm;} @media print{body{margin:0;} table{page-break-inside:auto;} tr{page-break-inside:avoid;page-break-after:auto;}}'
+      + 'th{background:#eee;} @page{size:A4 ' + orientation + ';margin:8mm;} @media print{body{margin:0;} table{page-break-inside:auto;} tr{page-break-inside:avoid;page-break-after:auto;}}'
       + '</style></head><body>';
     html += '<h1>' + cruzamentoEscape(meta.titulo) + '</h1>';
     html += '<div class="meta">'
       + '<div><strong>Gerado em:</strong> ' + cruzamentoEscape(meta.dataHora) + '</div>'
       + '<div><strong>Origem:</strong> ' + cruzamentoEscape(meta.filialOrigem) + '</div>'
       + '<div><strong>Destino:</strong> ' + cruzamentoEscape(meta.filialDestino) + '</div>'
+      + '<div><strong>Formato:</strong> ' + cruzamentoEscape(cruzamentoPdfOrientationLabel(orientation)) + '</div>'
       + '<div><strong>Excesso:</strong> ' + cruzamentoEscape(meta.arquivoExcesso) + '</div>'
       + '<div><strong>Ruptura:</strong> ' + cruzamentoEscape(meta.arquivoRuptura) + '</div>'
       + '</div>';
