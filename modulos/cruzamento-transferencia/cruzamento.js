@@ -333,6 +333,117 @@
     });
   }
 
+  function cruzamentoSetStatusMessage(message, state) {
+    var status = document.getElementById('cruzamento-status');
+    if (status) {
+      status.textContent = message;
+      status.setAttribute('data-state', state || 'info');
+    }
+  }
+
+  function cruzamentoNow() {
+    return new Date();
+  }
+
+  function cruzamentoFormatDateTime(date) {
+    return date.toLocaleString('pt-BR');
+  }
+
+  function cruzamentoFileDate(date) {
+    function pad(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    return String(date.getFullYear())
+      + pad(date.getMonth() + 1)
+      + pad(date.getDate())
+      + '_'
+      + pad(date.getHours())
+      + pad(date.getMinutes());
+  }
+
+  function cruzamentoSafeFilePart(value, fallback) {
+    var text = String(value || fallback || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toUpperCase();
+
+    return text || fallback || 'NAO_INFORMADO';
+  }
+
+  function cruzamentoFiltroResumo() {
+    var filtros = cruzamentoState.filtros;
+    return [
+      'Classe Geral: ' + (filtros.classeGeral || 'Todos'),
+      'Classe Filial Excesso: ' + (filtros.classeExcesso || 'Todos'),
+      'Classe Filial Ruptura: ' + (filtros.classeRuptura || 'Todos'),
+      'R$ Ruptura minimo: ' + cruzamentoFmtMoney(filtros.valorRupturaMin || 0),
+      'Excesso minimo: ' + cruzamentoFmtNumber(filtros.qtdExcessoMin || 0),
+      'Cobertura minima: ' + (filtros.coberturaMin === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMin)),
+      'Cobertura maxima: ' + (filtros.coberturaMax === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMax)),
+      'Busca: ' + (filtros.busca || 'Sem busca'),
+      'Somente sugestao maior que zero: ' + (filtros.somenteSugestao ? 'Sim' : 'Nao')
+    ];
+  }
+
+  function cruzamentoReportColumns() {
+    return [
+      { label: 'Codigo', key: 'codigo', type: 'text' },
+      { label: 'Descricao', key: 'descricao', type: 'text' },
+      { label: 'Filial Origem', key: 'filialOrigem', type: 'text' },
+      { label: 'Filial Destino', key: 'filialDestino', type: 'text' },
+      { label: 'Classe Geral', key: 'classeGeral', type: 'text' },
+      { label: 'Classe Filial Excesso', key: 'classeExcesso', type: 'text' },
+      { label: 'Classe Filial Ruptura', key: 'classeRuptura', type: 'text' },
+      { label: 'Estoque Origem', key: 'estoqueOrigem', type: 'number' },
+      { label: 'Excesso Qtd', key: 'excessoQtd', type: 'number' },
+      { label: 'Cobertura', key: 'cobertura', type: 'number' },
+      { label: 'Media Dia Excesso', key: 'mediaDiaExcesso', type: 'number' },
+      { label: 'R$ Excesso', key: 'excessoValor', type: 'money' },
+      { label: 'R$ Estoque', key: 'estoqueValor', type: 'money' },
+      { label: 'R$ Ruptura', key: 'rupturaValor', type: 'money' },
+      { label: 'DEZ', key: 'dez', type: 'number' },
+      { label: 'Media Dia Ruptura', key: 'mediaDiaRuptura', type: 'number' },
+      { label: 'Custo', key: 'custo', type: 'money' },
+      { label: 'Qtd Necessaria Estimada', key: 'qtdNecessaria', type: 'number' },
+      { label: 'Qtd Sugerida Transferir', key: 'qtdSugerida', type: 'number' },
+      { label: 'Valor Estimado Transferencia', key: 'valorTransferencia', type: 'money' },
+      { label: 'Observacao', key: 'observacao', type: 'text' }
+    ];
+  }
+
+  function cruzamentoReportValue(item, col, formatted) {
+    var value = item[col.key];
+    if (value === null || value === undefined || value === '') return '';
+    if (!formatted) return value;
+    if (col.type === 'money') return cruzamentoFmtMoney(value);
+    if (col.type === 'number') return cruzamentoFmtNumber(value);
+    return value;
+  }
+
+  function cruzamentoReportRows(formatted) {
+    var columns = cruzamentoReportColumns();
+    return cruzamentoState.resultadosFiltrados.map(function (item) {
+      return columns.map(function (col) {
+        return cruzamentoReportValue(item, col, formatted);
+      });
+    });
+  }
+
+  function cruzamentoReportMeta(now) {
+    return {
+      titulo: 'Cruzamento de Excesso x Ruptura',
+      dataHora: cruzamentoFormatDateTime(now),
+      filialOrigem: cruzamentoState.excesso.filial || '-',
+      filialDestino: cruzamentoState.ruptura.filial || '-',
+      arquivoExcesso: cruzamentoState.excesso.fileName || '-',
+      arquivoRuptura: cruzamentoState.ruptura.fileName || '-',
+      filtros: cruzamentoFiltroResumo()
+    };
+  }
+
   function cruzamentoRenderExcesso() {
     var fileEl = document.getElementById('cruzamento-excesso-file');
     var linesEl = document.getElementById('cruzamento-excesso-lines');
@@ -818,6 +929,7 @@
     );
     cruzamentoRenderKpis();
     cruzamentoRenderTabela();
+    cruzamentoRenderAcoes();
   }
 
   function cruzamentoClearResultados() {
@@ -1031,11 +1143,208 @@
 
   function cruzamentoRenderAcoes() {
     var canAnalyze = cruzamentoState.excesso.valid && cruzamentoState.ruptura.valid;
+    var hasResult = cruzamentoState.resultadoPronto;
+    var hasFilteredRows = cruzamentoState.resultadosFiltrados.length > 0;
 
     cruzamentoSetDisabled('cruzamento-btn-analisar', !canAnalyze);
-    cruzamentoSetDisabled('cruzamento-btn-exportar', true);
-    cruzamentoSetDisabled('cruzamento-btn-pdf', true);
-    cruzamentoSetDisabled('cruzamento-btn-copiar', true);
+    cruzamentoSetDisabled('cruzamento-btn-exportar', !hasResult);
+    cruzamentoSetDisabled('cruzamento-btn-pdf', !hasResult);
+    cruzamentoSetDisabled('cruzamento-btn-copiar', !hasFilteredRows);
+  }
+
+  function cruzamentoExportarExcel() {
+    var XLSX = cruzamentoGetXLSX();
+    var now = cruzamentoNow();
+    var meta = cruzamentoReportMeta(now);
+    var totals = cruzamentoTotals();
+    var columns = cruzamentoReportColumns();
+    var rows = [
+      [meta.titulo],
+      ['Gerado em', meta.dataHora],
+      ['Filial origem', meta.filialOrigem],
+      ['Filial destino', meta.filialDestino],
+      ['Arquivo excesso', meta.arquivoExcesso],
+      ['Arquivo ruptura', meta.arquivoRuptura],
+      ['Filtros aplicados', meta.filtros.join(' | ')],
+      [],
+      ['Resumo'],
+      ['Itens em excesso', cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length],
+      ['Itens em ruptura', cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length],
+      ['Codigos em comum', cruzamentoState.resultados.length],
+      ['Itens apos filtros', cruzamentoState.resultadosFiltrados.length],
+      ['R$ Ruptura filtrada', totals.rupturaValor],
+      ['R$ Excesso filtrado', totals.excessoValor],
+      ['Transferencia sugerida', totals.transferencia],
+      [],
+      columns.map(function (col) { return col.label; })
+    ];
+    var fileName;
+    var wb;
+    var ws;
+
+    if (!cruzamentoState.resultadoPronto) {
+      cruzamentoSetStatusMessage('Gere a analise antes de exportar.', 'acao-pendente');
+      return;
+    }
+
+    if (!XLSX) {
+      cruzamentoSetStatusMessage('Biblioteca XLSX nao encontrada para exportar.', 'acao-pendente');
+      return;
+    }
+
+    rows = rows.concat(cruzamentoReportRows(false));
+    ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = columns.map(function (col) {
+      return { wch: col.key === 'descricao' || col.key === 'observacao' ? 34 : 16 };
+    });
+    wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cruzamento');
+
+    fileName = 'Cruzamento_Excesso_Ruptura_'
+      + cruzamentoSafeFilePart(meta.filialOrigem, 'ORIGEM')
+      + '_para_'
+      + cruzamentoSafeFilePart(meta.filialDestino, 'DESTINO')
+      + '_'
+      + cruzamentoFileDate(now)
+      + '.xlsx';
+
+    XLSX.writeFile(wb, fileName);
+    cruzamentoSetStatusMessage('Excel gerado: ' + fileName, 'acao-ok');
+  }
+
+  function cruzamentoPrintTableHtml(rows) {
+    var columns = cruzamentoReportColumns();
+    var html = '<table><thead><tr>';
+
+    columns.forEach(function (col) {
+      html += '<th>' + cruzamentoEscape(col.label) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    if (!rows.length) {
+      html += '<tr><td colspan="' + columns.length + '">Nenhum item encontrado para os filtros atuais.</td></tr>';
+    } else {
+      rows.forEach(function (row) {
+        html += '<tr>';
+        row.forEach(function (value) {
+          html += '<td>' + cruzamentoEscape(value) + '</td>';
+        });
+        html += '</tr>';
+      });
+    }
+
+    return html + '</tbody></table>';
+  }
+
+  function cruzamentoImprimirPdf() {
+    var now = cruzamentoNow();
+    var meta = cruzamentoReportMeta(now);
+    var totals = cruzamentoTotals();
+    var rows = cruzamentoReportRows(true);
+    var win;
+    var html;
+
+    if (!cruzamentoState.resultadoPronto) {
+      cruzamentoSetStatusMessage('Gere a analise antes de imprimir.', 'acao-pendente');
+      return;
+    }
+
+    win = window.open('', '_blank');
+    if (!win) {
+      cruzamentoSetStatusMessage('O navegador bloqueou a janela de impressao.', 'acao-pendente');
+      return;
+    }
+
+    html = '<!doctype html><html><head><meta charset="utf-8"><title>'
+      + cruzamentoEscape(meta.titulo)
+      + '</title><style>'
+      + 'body{font-family:Arial,sans-serif;font-size:10px;color:#111;margin:14px;}'
+      + 'h1{font-size:18px;margin:0 0 8px;} h2{font-size:13px;margin:14px 0 6px;}'
+      + '.meta,.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 18px;margin-bottom:10px;}'
+      + '.filters{margin:8px 0 12px;} .filters span{display:inline-block;margin:0 8px 4px 0;}'
+      + 'table{width:100%;border-collapse:collapse;font-size:8px;} th,td{border:1px solid #999;padding:3px;vertical-align:top;}'
+      + 'th{background:#eee;} @page{size:A4 landscape;margin:8mm;} @media print{body{margin:0;} table{page-break-inside:auto;} tr{page-break-inside:avoid;page-break-after:auto;}}'
+      + '</style></head><body>';
+    html += '<h1>' + cruzamentoEscape(meta.titulo) + '</h1>';
+    html += '<div class="meta">'
+      + '<div><strong>Gerado em:</strong> ' + cruzamentoEscape(meta.dataHora) + '</div>'
+      + '<div><strong>Origem:</strong> ' + cruzamentoEscape(meta.filialOrigem) + '</div>'
+      + '<div><strong>Destino:</strong> ' + cruzamentoEscape(meta.filialDestino) + '</div>'
+      + '<div><strong>Excesso:</strong> ' + cruzamentoEscape(meta.arquivoExcesso) + '</div>'
+      + '<div><strong>Ruptura:</strong> ' + cruzamentoEscape(meta.arquivoRuptura) + '</div>'
+      + '</div>';
+    html += '<h2>Filtros</h2><div class="filters">';
+    meta.filtros.forEach(function (filtro) {
+      html += '<span>' + cruzamentoEscape(filtro) + '</span>';
+    });
+    html += '</div><h2>Resumo</h2><div class="kpis">'
+      + '<div><strong>Itens em excesso:</strong> ' + cruzamentoEscape(cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length) + '</div>'
+      + '<div><strong>Itens em ruptura:</strong> ' + cruzamentoEscape(cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length) + '</div>'
+      + '<div><strong>Codigos em comum:</strong> ' + cruzamentoEscape(cruzamentoState.resultados.length) + '</div>'
+      + '<div><strong>Itens apos filtros:</strong> ' + cruzamentoEscape(cruzamentoState.resultadosFiltrados.length) + '</div>'
+      + '<div><strong>R$ Ruptura filtrada:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.rupturaValor)) + '</div>'
+      + '<div><strong>R$ Excesso filtrado:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.excessoValor)) + '</div>'
+      + '<div><strong>Transferencia sugerida:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.transferencia)) + '</div>'
+      + '</div><h2>Itens sugeridos</h2>';
+    html += cruzamentoPrintTableHtml(rows);
+    html += '</body></html>';
+
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function () {
+      win.print();
+    }, 250);
+    cruzamentoSetStatusMessage('Relatorio de impressao aberto.', 'acao-ok');
+  }
+
+  function cruzamentoCopyFallback(text) {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', 'readonly');
+    area.style.position = 'fixed';
+    area.style.left = '-9999px';
+    document.body.appendChild(area);
+    area.select();
+    try {
+      document.execCommand('copy');
+      return true;
+    } catch (err) {
+      return false;
+    } finally {
+      document.body.removeChild(area);
+    }
+  }
+
+  function cruzamentoCopiarCodigos() {
+    var codigos = cruzamentoState.resultadosFiltrados.map(function (item) {
+      return item.codigo;
+    }).filter(Boolean);
+    var text = codigos.join('\n');
+
+    function done(ok) {
+      cruzamentoSetStatusMessage(
+        ok ? codigos.length + ' codigos copiados.' : 'Nao foi possivel copiar os codigos.',
+        ok ? 'acao-ok' : 'acao-pendente'
+      );
+    }
+
+    if (!codigos.length) {
+      cruzamentoSetStatusMessage('Nenhum codigo filtrado para copiar.', 'acao-pendente');
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        done(true);
+      }).catch(function () {
+        done(cruzamentoCopyFallback(text));
+      });
+      return;
+    }
+
+    done(cruzamentoCopyFallback(text));
   }
 
   function cruzamentoResetImportState() {
@@ -1098,6 +1407,10 @@
   }
 
   function cruzamentoLimparImportacoes() {
+    if (cruzamentoState.resultadoPronto && !window.confirm('Limpar importacoes, filtros e resultado da analise?')) {
+      return;
+    }
+
     cruzamentoResetImportState();
     cruzamentoClearFileInputs();
     cruzamentoRenderExcesso();
@@ -1106,14 +1419,6 @@
     cruzamentoRenderTabela();
     cruzamentoRenderMainStatus();
     cruzamentoRenderAcoes();
-  }
-
-  function cruzamentoPlaceholderAcao(message) {
-    var status = document.getElementById('cruzamento-status');
-    if (status) {
-      status.textContent = message;
-      status.setAttribute('data-state', 'acao-pendente');
-    }
   }
 
   function cruzamentoBindAcoes() {
@@ -1127,15 +1432,9 @@
       analisar.addEventListener('click', cruzamentoAnalisar);
     }
     if (limpar) limpar.addEventListener('click', cruzamentoLimparImportacoes);
-    if (exportar) exportar.addEventListener('click', function () {
-      cruzamentoPlaceholderAcao('Exportacao sera liberada apos resultado valido.');
-    });
-    if (pdf) pdf.addEventListener('click', function () {
-      cruzamentoPlaceholderAcao('Impressao/PDF sera liberado apos resultado valido.');
-    });
-    if (copiar) copiar.addEventListener('click', function () {
-      cruzamentoPlaceholderAcao('Copia de codigos sera liberada apos resultado valido.');
-    });
+    if (exportar) exportar.addEventListener('click', cruzamentoExportarExcel);
+    if (pdf) pdf.addEventListener('click', cruzamentoImprimirPdf);
+    if (copiar) copiar.addEventListener('click', cruzamentoCopiarCodigos);
 
     cruzamentoRenderAcoes();
   }
