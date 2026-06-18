@@ -17,19 +17,19 @@
             <h1>Cruzamento de Excesso x Ruptura por Filial</h1>
             <p class="intro">
               Importe a planilha de excesso da filial origem, importe a planilha de ruptura da filial destino
-              e gere um relatorio de transferencia sugerida.
+              e gere um relatório de transferência sugerida.
             </p>
           </div>
           <div id="cruzamento-status" class="status">
-            Aguardando importacoes
+            Aguardando importações
           </div>
         </header>
 
         <div class="flow-strip" aria-label="Fluxo do cruzamento">
           <div class="flow-step"><strong>1</strong><span>Excesso origem</span></div>
           <div class="flow-step"><strong>2</strong><span>Ruptura destino</span></div>
-          <div class="flow-step"><strong>3</strong><span>Analise</span></div>
-          <div class="flow-step"><strong>4</strong><span>Relatorio</span></div>
+          <div class="flow-step"><strong>3</strong><span>Análise</span></div>
+          <div class="flow-step"><strong>4</strong><span>Relatório</span></div>
         </div>
 
         <section class="kpi-grid" aria-label="Indicadores do cruzamento">
@@ -42,11 +42,11 @@
             <strong id="cruzamento-kpi-ruptura">0</strong>
           </div>
           <div class="kpi-box">
-            <span>Codigos em comum</span>
+            <span>Códigos em comum</span>
             <strong id="cruzamento-kpi-comum">0</strong>
           </div>
           <div class="kpi-box">
-            <span>Itens apos filtros</span>
+            <span>Itens após filtros</span>
             <strong id="cruzamento-kpi-filtrados">0</strong>
           </div>
           <div class="kpi-box">
@@ -58,18 +58,18 @@
             <strong id="cruzamento-kpi-exc-valor">R$ 0,00</strong>
           </div>
           <div class="kpi-box">
-            <span>Transferencia sugerida</span>
+            <span>Transferência sugerida</span>
             <strong id="cruzamento-kpi-transferencia">R$ 0,00</strong>
           </div>
         </section>
 
-        <section class="panel-grid" aria-label="Importacoes">
+        <section class="panel-grid" aria-label="Importações">
           <article class="mini-panel">
             <div class="mini-hd">1. Importar Excesso da Filial Origem</div>
             <div class="mini-bd">
               <div id="cruzamento-excesso-drop" class="file-drop">
                 <strong id="cruzamento-excesso-file">Nenhum arquivo selecionado</strong>
-                <span class="muted">Arquivo esperado: .xlsx com estoque, media, cobertura e excesso.</span>
+                <span class="muted">Arquivo esperado: .xlsx com estoque, média, cobertura e excesso.</span>
                 <input id="cruzamento-excesso-input" class="vs-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
               </div>
               <label>
@@ -88,7 +88,7 @@
             <div class="mini-bd">
               <div id="cruzamento-ruptura-drop" class="file-drop">
                 <strong id="cruzamento-ruptura-file">Nenhum arquivo selecionado</strong>
-                <span class="muted">Arquivo esperado: .xlsx com produto, custo, media e ruptura.</span>
+                <span class="muted">Arquivo esperado: .xlsx com produto, custo, média e ruptura.</span>
                 <input id="cruzamento-ruptura-input" class="vs-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
               </div>
               <label>
@@ -104,7 +104,7 @@
         </section>
 
         <section class="vs-panel filtros-panel">
-          <div class="vs-panel-hd">Filtros da Analise</div>
+          <div class="vs-panel-hd">Filtros da Análise</div>
           <div class="vs-panel-bd">
             <div class="filters-grid">
               <label>
@@ -135,42 +135,42 @@
                 </select>
               </label>
               <label>
-                R$ Ruptura minimo
+                R$ Ruptura mínimo
                 <input id="cruzamento-filtro-valor-ruptura" class="vs-input" type="number" min="0" step="0.01" value="0">
               </label>
               <label>
-                Excesso minimo
+                Excesso mínimo
                 <input id="cruzamento-filtro-qtd-excesso" class="vs-input" type="number" min="0" step="1" value="0">
               </label>
               <label>
-                Cobertura minima
+                Cobertura mínima
                 <input id="cruzamento-filtro-cobertura-min" class="vs-input" type="number" min="0" step="0.01" value="">
               </label>
               <label>
-                Cobertura maxima
+                Cobertura máxima
                 <input id="cruzamento-filtro-cobertura-max" class="vs-input" type="number" min="0" step="0.01" value="">
               </label>
               <label class="filter-search">
-                Codigo ou descricao
-                <input id="cruzamento-filtro-busca" class="vs-input" type="text" value="" placeholder="Buscar produto ou codigo">
+                Código ou descrição
+                <input id="cruzamento-filtro-busca" class="vs-input" type="text" value="" placeholder="Buscar produto ou código">
               </label>
               <label class="check-line">
                 <input id="cruzamento-filtro-sugestao" type="checkbox">
-                Somente sugestao maior que zero
+                Somente sugestão maior que zero
               </label>
             </div>
           </div>
         </section>
 
         <section class="vs-panel actions-panel">
-          <div class="vs-panel-hd">Acoes</div>
+          <div class="vs-panel-hd">Ações</div>
           <div class="vs-panel-bd">
             <div class="actions-row">
               <button id="cruzamento-btn-analisar" class="vbtn prim" type="button" disabled>Analisar Cruzamento</button>
-              <button id="cruzamento-btn-limpar" class="vbtn" type="button">Limpar Importacoes</button>
+              <button id="cruzamento-btn-limpar" class="vbtn" type="button">Limpar Importações</button>
               <button id="cruzamento-btn-exportar" class="vbtn" type="button" disabled>Exportar Excel</button>
               <button id="cruzamento-btn-pdf" class="vbtn" type="button" disabled>Imprimir / Salvar PDF</button>
-              <button id="cruzamento-btn-copiar" class="vbtn" type="button" disabled>Copiar Codigos</button>
+              <button id="cruzamento-btn-copiar" class="vbtn" type="button" disabled>Copiar Códigos</button>
             </div>
           </div>
         </section>
@@ -178,17 +178,12 @@
         <section class="vs-panel results-panel">
           <div class="vs-panel-hd">Resultado do Cruzamento</div>
           <div class="vs-panel-bd">
-            <div class="toolbar-row">
-              <input class="vs-input search-input" type="text" placeholder="Buscar produto ou codigo" disabled>
-              <button class="vbtn" type="button" disabled>Filtrar</button>
-              <button class="vbtn prim" type="button" disabled>Gerar relatorio</button>
-            </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="codigo">Codigo</th>
-                    <th data-sort="descricao">Descricao</th>
+                    <th data-sort="codigo">Código</th>
+                    <th data-sort="descricao">Descrição</th>
                     <th>Filial Origem</th>
                     <th>Filial Destino</th>
                     <th data-sort="classeGeral">Classe Geral</th>
@@ -197,17 +192,17 @@
                     <th>Estoque Origem</th>
                     <th data-sort="excessoQtd">Excesso Qtd</th>
                     <th data-sort="cobertura">Cobertura</th>
-                    <th>Media Dia Excesso</th>
+                    <th>Média Dia Excesso</th>
                     <th>R$ Excesso</th>
                     <th>R$ Estoque</th>
                     <th data-sort="rupturaValor">R$ Ruptura</th>
                     <th>DEZ</th>
-                    <th>Media Dia Ruptura</th>
+                    <th>Média Dia Ruptura</th>
                     <th>Custo</th>
-                    <th>Qtd Necessaria Estimada</th>
+                    <th>Qtd Necessária Estimada</th>
                     <th data-sort="qtdSugerida">Qtd Sugerida Transferir</th>
-                    <th>Valor Estimado Transferencia</th>
-                    <th>Observacao</th>
+                    <th>Valor Estimado Transferência</th>
+                    <th>Observação</th>
                   </tr>
                 </thead>
                 <tbody id="cruzamento-resultado-body">
@@ -226,9 +221,9 @@
     <section class="vs-panel access-denied">
       <div class="vs-panel-hd">Acesso restrito</div>
       <div class="vs-panel-bd">
-        <p class="intro">Acesso restrito ao usuario de transferencia.</p>
+        <p class="intro">Acesso restrito ao usuário de transferência.</p>
         <div class="status status-alert">
-          Entre no sistema principal com o usuario TRANSFERENCIA para usar esta opcao.
+          Entre no sistema principal com o usuário TRANSFERENCIA para usar esta opção.
         </div>
       </div>
     </section>
