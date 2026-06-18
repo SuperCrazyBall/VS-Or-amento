@@ -169,6 +169,13 @@
               <button id="cruzamento-btn-analisar" class="vbtn prim" type="button" disabled>Analisar Cruzamento</button>
               <button id="cruzamento-btn-limpar" class="vbtn" type="button">Limpar Importações</button>
               <button id="cruzamento-btn-exportar" class="vbtn" type="button" disabled>Exportar Excel</button>
+              <label class="print-orientation">
+                PDF
+                <select id="cruzamento-pdf-orientacao" class="vs-input">
+                  <option value="landscape" selected>Paisagem</option>
+                  <option value="portrait">Retrato</option>
+                </select>
+              </label>
               <button id="cruzamento-btn-pdf" class="vbtn" type="button" disabled>Imprimir / Salvar PDF</button>
               <button id="cruzamento-btn-copiar" class="vbtn" type="button" disabled>Copiar Códigos</button>
             </div>
@@ -203,7 +210,7 @@
                     <th>Média Dia Ruptura</th>
                     <th>Custo</th>
                     <th data-sort="qtdSugerida">Qtd Sugerida Transferir</th>
-                    <th>Valor Estimado Transferência</th>
+                    <th data-sort="valorTransferencia">Valor Estimado Transferência</th>
                     <th>Observação</th>
                   </tr>
                 </thead>
