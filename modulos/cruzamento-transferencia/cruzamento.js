@@ -1,7 +1,7 @@
 (function () {
   var CRUZAMENTO_TABLE_RENDER_LIMIT = 300;
-  var CRUZAMENTO_EXCESSO_INVALID_MESSAGE = 'Esta planilha nao parece ser de EXCESSO. Verifique se contem CODIGO DESCRICAO e EXCESSO.';
-  var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha nao parece ser de RUPTURA. Verifique se contem CODIGO_PRODUTO e R$ RUPTURA.';
+  var CRUZAMENTO_EXCESSO_INVALID_MESSAGE = 'Esta planilha não parece ser de EXCESSO. Verifique se contém CODIGO DESCRICAO e EXCESSO.';
+  var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha não parece ser de RUPTURA. Verifique se contém CODIGO_PRODUTO e R$ RUPTURA.';
 
   var cruzamentoState = {
     status: 'inicial',
@@ -383,19 +383,19 @@
       'Classe Geral: ' + (filtros.classeGeral || 'Todos'),
       'Classe Filial Excesso: ' + (filtros.classeExcesso || 'Todos'),
       'Classe Filial Ruptura: ' + (filtros.classeRuptura || 'Todos'),
-      'R$ Ruptura minimo: ' + cruzamentoFmtMoney(filtros.valorRupturaMin || 0),
-      'Excesso minimo: ' + cruzamentoFmtNumber(filtros.qtdExcessoMin || 0),
-      'Cobertura minima: ' + (filtros.coberturaMin === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMin)),
-      'Cobertura maxima: ' + (filtros.coberturaMax === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMax)),
+      'R$ Ruptura mínimo: ' + cruzamentoFmtMoney(filtros.valorRupturaMin || 0),
+      'Excesso mínimo: ' + cruzamentoFmtNumber(filtros.qtdExcessoMin || 0),
+      'Cobertura mínima: ' + (filtros.coberturaMin === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMin)),
+      'Cobertura máxima: ' + (filtros.coberturaMax === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMax)),
       'Busca: ' + (filtros.busca || 'Sem busca'),
-      'Somente sugestao maior que zero: ' + (filtros.somenteSugestao ? 'Sim' : 'Nao')
+      'Somente sugestão maior que zero: ' + (filtros.somenteSugestao ? 'Sim' : 'Não')
     ];
   }
 
   function cruzamentoReportColumns() {
     return [
-      { label: 'Codigo', key: 'codigo', type: 'text' },
-      { label: 'Descricao', key: 'descricao', type: 'text' },
+      { label: 'Código', key: 'codigo', type: 'text' },
+      { label: 'Descrição', key: 'descricao', type: 'text' },
       { label: 'Filial Origem', key: 'filialOrigem', type: 'text' },
       { label: 'Filial Destino', key: 'filialDestino', type: 'text' },
       { label: 'Classe Geral', key: 'classeGeral', type: 'text' },
@@ -404,17 +404,17 @@
       { label: 'Estoque Origem', key: 'estoqueOrigem', type: 'number' },
       { label: 'Excesso Qtd', key: 'excessoQtd', type: 'number' },
       { label: 'Cobertura', key: 'cobertura', type: 'number' },
-      { label: 'Media Dia Excesso', key: 'mediaDiaExcesso', type: 'number' },
+      { label: 'Média Dia Excesso', key: 'mediaDiaExcesso', type: 'number' },
       { label: 'R$ Excesso', key: 'excessoValor', type: 'money' },
       { label: 'R$ Estoque', key: 'estoqueValor', type: 'money' },
       { label: 'R$ Ruptura', key: 'rupturaValor', type: 'money' },
       { label: 'DEZ', key: 'dez', type: 'number' },
-      { label: 'Media Dia Ruptura', key: 'mediaDiaRuptura', type: 'number' },
+      { label: 'Média Dia Ruptura', key: 'mediaDiaRuptura', type: 'number' },
       { label: 'Custo', key: 'custo', type: 'money' },
-      { label: 'Qtd Necessaria Estimada', key: 'qtdNecessaria', type: 'number' },
+      { label: 'Qtd Necessária Estimada', key: 'qtdNecessaria', type: 'number' },
       { label: 'Qtd Sugerida Transferir', key: 'qtdSugerida', type: 'number' },
-      { label: 'Valor Estimado Transferencia', key: 'valorTransferencia', type: 'money' },
-      { label: 'Observacao', key: 'observacao', type: 'text' }
+      { label: 'Valor Estimado Transferência', key: 'valorTransferencia', type: 'money' },
+      { label: 'Observação', key: 'observacao', type: 'text' }
     ];
   }
 
@@ -539,7 +539,7 @@
         status.textContent = 'Existem produtos em comum, mas nenhum passou nos filtros atuais.';
       } else {
         state = 'analisado';
-        status.textContent = 'Analise concluida. Revise os filtros ou gere as saidas. Resultados filtrados: '
+        status.textContent = 'Análise concluída. Revise os filtros ou gere as saídas. Resultados filtrados: '
           + cruzamentoState.resultadosFiltrados.length
           + '. Rupturas sem origem em excesso: '
           + cruzamentoState.rupturaSemOrigem
@@ -562,7 +562,7 @@
       status.textContent = 'Ruptura importada. Importe a planilha de excesso para continuar.';
     } else {
       state = 'inicial';
-      status.textContent = 'Aguardando importacoes. Comece importando Excesso e Ruptura.';
+      status.textContent = 'Aguardando importações. Comece importando Excesso e Ruptura.';
     }
     status.setAttribute('data-state', state);
   }
@@ -577,12 +577,12 @@
     }
 
     if (!/\.xlsx$/i.test(file.name)) {
-      cruzamentoSetExcessoError(file.name, 'Selecione um arquivo .xlsx valido.');
+      cruzamentoSetExcessoError(file.name, 'Selecione um arquivo .xlsx válido.');
       return;
     }
 
     if (!XLSX) {
-      cruzamentoSetExcessoError(file.name, 'Biblioteca de leitura XLSX nao encontrada no sistema principal.');
+      cruzamentoSetExcessoError(file.name, 'Biblioteca de leitura XLSX não encontrada no sistema principal.');
       return;
     }
 
@@ -611,7 +611,7 @@
         workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
         rows = cruzamentoWorkbookRows(XLSX, workbook);
         if (!rows) {
-          cruzamentoSetExcessoError(file.name, 'A planilha nao possui abas para leitura.');
+          cruzamentoSetExcessoError(file.name, 'A planilha não possui abas para leitura.');
           return;
         }
 
@@ -658,12 +658,12 @@
     }
 
     if (!/\.xlsx$/i.test(file.name)) {
-      cruzamentoSetRupturaError(file.name, 'Selecione um arquivo .xlsx valido.');
+      cruzamentoSetRupturaError(file.name, 'Selecione um arquivo .xlsx válido.');
       return;
     }
 
     if (!XLSX) {
-      cruzamentoSetRupturaError(file.name, 'Biblioteca de leitura XLSX nao encontrada no sistema principal.');
+      cruzamentoSetRupturaError(file.name, 'Biblioteca de leitura XLSX não encontrada no sistema principal.');
       return;
     }
 
@@ -692,7 +692,7 @@
         workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
         rows = cruzamentoWorkbookRows(XLSX, workbook);
         if (!rows) {
-          cruzamentoSetRupturaError(file.name, 'A planilha nao possui abas para leitura.');
+          cruzamentoSetRupturaError(file.name, 'A planilha não possui abas para leitura.');
           return;
         }
 
@@ -809,9 +809,9 @@
       observacoes.push('Necessidade por ruptura/custo');
     } else if (dez !== null && mediaDiaRuptura !== null) {
       necessidade = cruzamentoRoundQty(dez * mediaDiaRuptura);
-      observacoes.push('Necessidade por DEZ x media dia');
+      observacoes.push('Necessidade por DEZ x média dia');
     } else {
-      observacoes.push('Necessidade nao calculada');
+      observacoes.push('Necessidade não calculada');
     }
 
     if (excessoQtd <= 0) {
@@ -819,7 +819,7 @@
       observacoes.push('Sem excesso disponivel');
     } else if (necessidade === null) {
       sugerida = 0;
-      observacoes.push('Sugestao zerada sem necessidade calculada');
+      observacoes.push('Sugestão zerada sem necessidade calculada');
     } else {
       sugerida = cruzamentoRoundQty(Math.max(0, Math.min(excessoQtd, necessidade)));
     }
@@ -831,7 +831,7 @@
     }
 
     if (sugerida > 0) {
-      observacoes.push('Sugestao calculada');
+      observacoes.push('Sugestão calculada');
     } else {
       observacoes.push('Sem quantidade sugerida');
     }
@@ -1023,7 +1023,7 @@
         + CRUZAMENTO_TABLE_RENDER_LIMIT
         + ' itens de '
         + rows.length
-        + ' filtrados. Exportacao e PDF usam todos os itens filtrados.</td></tr>';
+        + ' filtrados. Exportação e PDF usam todos os itens filtrados.</td></tr>';
     }
 
     visibleRows.forEach(function (item) {
@@ -1205,11 +1205,11 @@
       ['Resumo'],
       ['Itens em excesso', cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length],
       ['Itens em ruptura', cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length],
-      ['Codigos em comum', cruzamentoState.resultados.length],
-      ['Itens apos filtros', cruzamentoState.resultadosFiltrados.length],
+      ['Códigos em comum', cruzamentoState.resultados.length],
+      ['Itens após filtros', cruzamentoState.resultadosFiltrados.length],
       ['R$ Ruptura filtrada', totals.rupturaValor],
       ['R$ Excesso filtrado', totals.excessoValor],
-      ['Transferencia sugerida', totals.transferencia],
+      ['Transferência sugerida', totals.transferencia],
       [],
       columns.map(function (col) { return col.label; })
     ];
@@ -1218,12 +1218,12 @@
     var ws;
 
     if (!cruzamentoState.resultadoPronto) {
-      cruzamentoSetStatusMessage('Gere a analise antes de exportar.', 'acao-pendente');
+      cruzamentoSetStatusMessage('Gere a análise antes de exportar.', 'acao-pendente');
       return;
     }
 
     if (!XLSX) {
-      cruzamentoSetStatusMessage('Biblioteca XLSX nao encontrada para exportar.', 'acao-pendente');
+      cruzamentoSetStatusMessage('Biblioteca XLSX não encontrada para exportar.', 'acao-pendente');
       return;
     }
 
@@ -1280,13 +1280,13 @@
     var html;
 
     if (!cruzamentoState.resultadoPronto) {
-      cruzamentoSetStatusMessage('Gere a analise antes de imprimir.', 'acao-pendente');
+      cruzamentoSetStatusMessage('Gere a análise antes de imprimir.', 'acao-pendente');
       return;
     }
 
     win = window.open('', '_blank');
     if (!win) {
-      cruzamentoSetStatusMessage('O navegador bloqueou a janela de impressao.', 'acao-pendente');
+      cruzamentoSetStatusMessage('O navegador bloqueou a janela de impressão.', 'acao-pendente');
       return;
     }
 
@@ -1315,11 +1315,11 @@
     html += '</div><h2>Resumo</h2><div class="kpis">'
       + '<div><strong>Itens em excesso:</strong> ' + cruzamentoEscape(cruzamentoState.excesso.items.length || cruzamentoState.excesso.rows.length) + '</div>'
       + '<div><strong>Itens em ruptura:</strong> ' + cruzamentoEscape(cruzamentoState.ruptura.items.length || cruzamentoState.ruptura.rows.length) + '</div>'
-      + '<div><strong>Codigos em comum:</strong> ' + cruzamentoEscape(cruzamentoState.resultados.length) + '</div>'
-      + '<div><strong>Itens apos filtros:</strong> ' + cruzamentoEscape(cruzamentoState.resultadosFiltrados.length) + '</div>'
+      + '<div><strong>Códigos em comum:</strong> ' + cruzamentoEscape(cruzamentoState.resultados.length) + '</div>'
+      + '<div><strong>Itens após filtros:</strong> ' + cruzamentoEscape(cruzamentoState.resultadosFiltrados.length) + '</div>'
       + '<div><strong>R$ Ruptura filtrada:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.rupturaValor)) + '</div>'
       + '<div><strong>R$ Excesso filtrado:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.excessoValor)) + '</div>'
-      + '<div><strong>Transferencia sugerida:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.transferencia)) + '</div>'
+      + '<div><strong>Transferência sugerida:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.transferencia)) + '</div>'
       + '</div><h2>Itens sugeridos</h2>';
     html += cruzamentoPrintTableHtml(rows);
     html += '</body></html>';
@@ -1331,7 +1331,7 @@
     setTimeout(function () {
       win.print();
     }, 250);
-    cruzamentoSetStatusMessage('Relatorio de impressao aberto.', 'acao-ok');
+    cruzamentoSetStatusMessage('Relatório de impressão aberto.', 'acao-ok');
   }
 
   function cruzamentoCopyFallback(text) {
@@ -1360,13 +1360,13 @@
 
     function done(ok) {
       cruzamentoSetStatusMessage(
-        ok ? codigos.length + ' codigos copiados.' : 'Nao foi possivel copiar os codigos.',
+        ok ? codigos.length + ' códigos copiados.' : 'Não foi possível copiar os códigos.',
         ok ? 'acao-ok' : 'acao-pendente'
       );
     }
 
     if (!codigos.length) {
-      cruzamentoSetStatusMessage('Nenhum codigo filtrado para copiar.', 'acao-pendente');
+      cruzamentoSetStatusMessage('Nenhum código filtrado para copiar.', 'acao-pendente');
       return;
     }
 
@@ -1442,7 +1442,7 @@
   }
 
   function cruzamentoLimparImportacoes() {
-    if (cruzamentoState.resultadoPronto && !window.confirm('Limpar importacoes, filtros e resultado da analise?')) {
+    if (cruzamentoState.resultadoPronto && !window.confirm('Limpar importações, filtros e resultado da análise?')) {
       return;
     }
 
