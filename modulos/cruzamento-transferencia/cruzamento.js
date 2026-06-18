@@ -1,4 +1,8 @@
 (function () {
+  var CRUZAMENTO_TABLE_RENDER_LIMIT = 300;
+  var CRUZAMENTO_EXCESSO_INVALID_MESSAGE = 'Esta planilha nao parece ser de EXCESSO. Verifique se contem CODIGO DESCRICAO e EXCESSO.';
+  var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha nao parece ser de RUPTURA. Verifique se contem CODIGO_PRODUTO e R$ RUPTURA.';
+
   var cruzamentoState = {
     status: 'inicial',
     modulo: 'cruzamento-transferencia',
@@ -518,31 +522,49 @@
 
   function cruzamentoRenderMainStatus() {
     var status = document.getElementById('cruzamento-status');
+    var state = cruzamentoState.status;
     if (!status) return;
-    status.setAttribute('data-state', cruzamentoState.status);
     if (cruzamentoState.status === 'excesso-lendo') {
+      state = 'carregando';
       status.textContent = 'Lendo arquivo de excesso...';
     } else if (cruzamentoState.status === 'ruptura-lendo') {
+      state = 'carregando';
       status.textContent = 'Lendo arquivo de ruptura...';
     } else if (cruzamentoState.status === 'analise-ok') {
-      status.textContent = 'Analise concluida. Resultados filtrados: '
-        + cruzamentoState.resultadosFiltrados.length
-        + '. Rupturas sem origem em excesso: '
-        + cruzamentoState.rupturaSemOrigem
-        + '.';
+      if (!cruzamentoState.resultados.length) {
+        state = 'erro';
+        status.textContent = 'Nenhum produto em comum foi encontrado entre a filial em ruptura e a filial em excesso.';
+      } else if (!cruzamentoState.resultadosFiltrados.length) {
+        state = 'acao-pendente';
+        status.textContent = 'Existem produtos em comum, mas nenhum passou nos filtros atuais.';
+      } else {
+        state = 'analisado';
+        status.textContent = 'Analise concluida. Revise os filtros ou gere as saidas. Resultados filtrados: '
+          + cruzamentoState.resultadosFiltrados.length
+          + '. Rupturas sem origem em excesso: '
+          + cruzamentoState.rupturaSemOrigem
+          + '.';
+      }
     } else if (cruzamentoState.status === 'excesso-invalido') {
-      status.textContent = 'Corrija o arquivo de excesso.';
+      state = 'erro';
+      status.textContent = CRUZAMENTO_EXCESSO_INVALID_MESSAGE;
     } else if (cruzamentoState.status === 'ruptura-invalido') {
-      status.textContent = 'Corrija o arquivo de ruptura.';
+      state = 'erro';
+      status.textContent = CRUZAMENTO_RUPTURA_INVALID_MESSAGE;
     } else if (cruzamentoState.excesso.valid && cruzamentoState.ruptura.valid) {
-      status.textContent = 'Excesso e ruptura importados. Pronto para proximas etapas.';
+      state = 'pronto';
+      status.textContent = 'Excesso e ruptura importados. Clique em Analisar Cruzamento.';
     } else if (cruzamentoState.excesso.valid) {
-      status.textContent = 'Excesso importado. Aguardando ruptura.';
+      state = 'parcial';
+      status.textContent = 'Excesso importado. Importe a planilha de ruptura para continuar.';
     } else if (cruzamentoState.ruptura.valid) {
-      status.textContent = 'Ruptura importada. Aguardando excesso.';
+      state = 'parcial';
+      status.textContent = 'Ruptura importada. Importe a planilha de excesso para continuar.';
     } else {
-      status.textContent = 'Aguardando importacoes';
+      state = 'inicial';
+      status.textContent = 'Aguardando importacoes. Comece importando Excesso e Ruptura.';
     }
+    status.setAttribute('data-state', state);
   }
 
   function cruzamentoReadExcessoFile(file) {
@@ -610,7 +632,7 @@
         cruzamentoState.excesso.items = validation.valid ? cruzamentoParseExcessoRows(dataRows, headers) : [];
         cruzamentoState.excesso.message = validation.valid
           ? 'Arquivo de excesso validado com sucesso.'
-          : 'Cabecalhos ausentes: ' + validation.missing.join(', ');
+          : CRUZAMENTO_EXCESSO_INVALID_MESSAGE + ' Colunas ausentes: ' + validation.missing.join(', ');
         cruzamentoState.status = validation.valid ? 'excesso-ok' : 'excesso-invalido';
 
         cruzamentoRenderExcesso();
@@ -691,7 +713,7 @@
         cruzamentoState.ruptura.items = validation.valid ? cruzamentoParseRupturaRows(dataRows, headers) : [];
         cruzamentoState.ruptura.message = validation.valid
           ? 'Arquivo de ruptura validado com sucesso.'
-          : 'Cabecalhos ausentes: ' + validation.missing.join(', ');
+          : CRUZAMENTO_RUPTURA_INVALID_MESSAGE + ' Colunas ausentes: ' + validation.missing.join(', ');
         cruzamentoState.status = validation.valid ? 'ruptura-ok' : 'ruptura-invalido';
 
         cruzamentoRenderRuptura();
@@ -977,6 +999,7 @@
   function cruzamentoRenderTabela() {
     var body = document.getElementById('cruzamento-resultado-body');
     var rows = cruzamentoState.resultadosFiltrados;
+    var visibleRows = rows.slice(0, CRUZAMENTO_TABLE_RENDER_LIMIT);
     var html = '';
 
     if (!body) return;
@@ -987,11 +1010,23 @@
     }
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td class="empty-cell" colspan="21">Nenhum item encontrado para os filtros atuais.</td></tr>';
+      body.innerHTML = '<tr><td class="empty-cell" colspan="21">'
+        + (cruzamentoState.resultados.length
+          ? 'Existem produtos em comum, mas nenhum passou nos filtros atuais.'
+          : 'Nenhum produto em comum foi encontrado entre a filial em ruptura e a filial em excesso.')
+        + '</td></tr>';
       return;
     }
 
-    rows.forEach(function (item) {
+    if (rows.length > CRUZAMENTO_TABLE_RENDER_LIMIT) {
+      html += '<tr><td class="limit-cell" colspan="21">Mostrando os primeiros '
+        + CRUZAMENTO_TABLE_RENDER_LIMIT
+        + ' itens de '
+        + rows.length
+        + ' filtrados. Exportacao e PDF usam todos os itens filtrados.</td></tr>';
+    }
+
+    visibleRows.forEach(function (item) {
       html += '<tr>';
       html += '<td>' + cruzamentoEscape(item.codigo) + '</td>';
       html += '<td>' + cruzamentoEscape(item.descricao) + '</td>';
