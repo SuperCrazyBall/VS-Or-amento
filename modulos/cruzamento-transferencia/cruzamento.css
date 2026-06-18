@@ -346,6 +346,26 @@ textarea:focus {
   align-items: center;
 }
 
+.print-orientation {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 4px;
+  border: 1px solid #c09000;
+  background: #fff7d5;
+  color: #000;
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.print-orientation .vs-input {
+  width: 96px;
+  min-height: 20px;
+  padding: 1px 3px;
+}
+
 .vbtn {
   display: inline-flex;
   align-items: center;
