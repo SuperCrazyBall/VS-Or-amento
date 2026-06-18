@@ -70,6 +70,18 @@ body {
   white-space: nowrap;
 }
 
+.status[data-state="acao-ok"] {
+  border-color: #1c7a26;
+  background: #dff4df;
+  color: #12531a;
+}
+
+.status[data-state="acao-pendente"] {
+  border-color: #c09000;
+  background: #fff0a8;
+  color: #5c3b00;
+}
+
 .flow-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
