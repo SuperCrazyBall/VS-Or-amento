@@ -32,6 +32,7 @@
       classeExcesso: '',
       classeRuptura: '',
       valorRupturaMin: 0,
+      valorTransferenciaMin: 0,
       qtdExcessoMin: 0,
       coberturaMin: '',
       coberturaMax: '',
@@ -45,6 +46,14 @@
       ruptura: {}
     },
     rupturaSemOrigem: 0,
+    linhasSelecionadas: {},
+    linhasExcluidas: {},
+    colunasOcultas: {},
+    selecaoArraste: {
+      ativo: false,
+      selecionar: true
+    },
+    scrollSyncing: false,
     sort: {
       key: 'prioridade',
       dir: 'asc'
@@ -388,6 +397,7 @@
       'Classe Filial Excesso: ' + (filtros.classeExcesso || 'Todos'),
       'Classe Filial Ruptura: ' + (filtros.classeRuptura || 'Todos'),
       'R$ Ruptura mínimo: ' + cruzamentoFmtMoney(filtros.valorRupturaMin || 0),
+      'Valor Transferência mínimo: ' + cruzamentoFmtMoney(filtros.valorTransferenciaMin || 0),
       'Excesso mínimo: ' + cruzamentoFmtNumber(filtros.qtdExcessoMin || 0),
       'Cobertura mínima: ' + (filtros.coberturaMin === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMin)),
       'Cobertura máxima: ' + (filtros.coberturaMax === '' ? 'Sem limite' : cruzamentoFmtNumber(filtros.coberturaMax)),
@@ -398,8 +408,8 @@
 
   function cruzamentoReportColumns() {
     return [
-      { label: 'Código', key: 'codigo', type: 'text' },
-      { label: 'Descrição', key: 'descricao', type: 'text' },
+      { label: 'Código', key: 'codigo', type: 'text', locked: true },
+      { label: 'Descrição', key: 'descricao', type: 'text', locked: true },
       { label: 'Filial Origem', key: 'filialOrigem', type: 'text' },
       { label: 'Filial Destino', key: 'filialDestino', type: 'text' },
       { label: 'Classe Geral', key: 'classeGeral', type: 'text' },
@@ -415,10 +425,22 @@
       { label: 'DEZ', key: 'dez', type: 'number' },
       { label: 'Média Dia Ruptura', key: 'mediaDiaRuptura', type: 'number' },
       { label: 'Custo', key: 'custo', type: 'money' },
-      { label: 'Qtd Sugerida Transferir', key: 'qtdSugerida', type: 'number' },
+      { label: 'Qtd Sugerida Transferir', key: 'qtdSugerida', type: 'number', locked: true },
       { label: 'Valor Estimado Transferência', key: 'valorTransferencia', type: 'money' },
       { label: 'Observação', key: 'observacao', type: 'text' }
     ];
+  }
+
+  function cruzamentoIsColunaVisivel(col) {
+    return !!col.locked || !cruzamentoState.colunasOcultas[col.key];
+  }
+
+  function cruzamentoVisibleReportColumns() {
+    return cruzamentoReportColumns().filter(cruzamentoIsColunaVisivel);
+  }
+
+  function cruzamentoColspan() {
+    return Math.max(1, cruzamentoVisibleReportColumns().length);
   }
 
   function cruzamentoReportValue(item, col, formatted) {
@@ -430,13 +452,126 @@
     return value;
   }
 
-  function cruzamentoReportRows(formatted) {
-    var columns = cruzamentoReportColumns();
+  function cruzamentoReportRows(formatted, columns) {
+    columns = columns || cruzamentoVisibleReportColumns();
     return cruzamentoState.resultadosFiltrados.map(function (item) {
       return columns.map(function (col) {
         return cruzamentoReportValue(item, col, formatted);
       });
     });
+  }
+
+  function cruzamentoResetEdicaoPreview() {
+    cruzamentoState.linhasSelecionadas = {};
+    cruzamentoState.linhasExcluidas = {};
+    cruzamentoState.colunasOcultas = {};
+    cruzamentoState.selecaoArraste = {
+      ativo: false,
+      selecionar: true
+    };
+  }
+
+  function cruzamentoCountMap(map) {
+    return Object.keys(map || {}).filter(function (key) {
+      return !!map[key];
+    }).length;
+  }
+
+  function cruzamentoIsSelected(rid) {
+    return !!(rid && cruzamentoState.linhasSelecionadas[rid]);
+  }
+
+  function cruzamentoSetLinhaSelecionada(rid, selected) {
+    var row;
+    if (!rid) return;
+    if (selected) {
+      cruzamentoState.linhasSelecionadas[rid] = true;
+    } else {
+      delete cruzamentoState.linhasSelecionadas[rid];
+    }
+    row = document.querySelector('tr[data-rid="' + rid + '"]');
+    if (row) row.classList.toggle('row-selected', !!selected);
+  }
+
+  function cruzamentoRenderEditResumo() {
+    var resumo = document.getElementById('cruzamento-edit-resumo');
+    var selected = cruzamentoCountMap(cruzamentoState.linhasSelecionadas);
+    var excluded = cruzamentoCountMap(cruzamentoState.linhasExcluidas);
+    if (resumo) {
+      resumo.textContent = 'Selecionados: ' + selected + ' | Excluídos: ' + excluded;
+    }
+    cruzamentoSetDisabled('cruzamento-btn-excluir-selecionados', selected === 0);
+    cruzamentoSetDisabled('cruzamento-btn-restaurar-itens', excluded === 0);
+  }
+
+  function cruzamentoRenderColunas() {
+    var panel = document.getElementById('cruzamento-colunas-panel');
+    var html = '<div class="columns-grid">';
+    var columns = cruzamentoReportColumns();
+
+    columns.forEach(function (col) {
+      var checked = cruzamentoIsColunaVisivel(col) ? ' checked' : '';
+      var disabled = col.locked ? ' disabled' : '';
+      var locked = col.locked ? ' is-locked' : '';
+      html += '<label class="' + locked.trim() + '"><input type="checkbox" data-col-toggle="'
+        + cruzamentoEscape(col.key)
+        + '"'
+        + checked
+        + disabled
+        + '> '
+        + cruzamentoEscape(col.label)
+        + '</label>';
+    });
+
+    html += '</div>';
+    if (panel) panel.innerHTML = html;
+
+    columns.forEach(function (col) {
+      document.querySelectorAll('[data-col="' + col.key + '"]').forEach(function (el) {
+        el.style.display = cruzamentoIsColunaVisivel(col) ? '' : 'none';
+      });
+    });
+
+    cruzamentoSyncTableTopScroll();
+  }
+
+  function cruzamentoExcluirSelecionados() {
+    var selectedIds = Object.keys(cruzamentoState.linhasSelecionadas).filter(function (rid) {
+      return !!cruzamentoState.linhasSelecionadas[rid];
+    });
+
+    if (!selectedIds.length) return;
+
+    selectedIds.forEach(function (rid) {
+      cruzamentoState.linhasExcluidas[rid] = true;
+      delete cruzamentoState.linhasSelecionadas[rid];
+    });
+
+    cruzamentoSetStatusMessage(selectedIds.length + ' item(ns) removido(s) da prévia atual.', 'acao-ok');
+    cruzamentoApplyFiltros();
+  }
+
+  function cruzamentoRestaurarItens() {
+    if (!cruzamentoCountMap(cruzamentoState.linhasExcluidas)) return;
+    cruzamentoState.linhasExcluidas = {};
+    cruzamentoState.linhasSelecionadas = {};
+    cruzamentoSetStatusMessage('Itens restaurados na prévia atual.', 'acao-ok');
+    cruzamentoApplyFiltros();
+  }
+
+  function cruzamentoToggleColunasPanel() {
+    var panel = document.getElementById('cruzamento-colunas-panel');
+    if (panel) panel.classList.toggle('is-hidden');
+  }
+
+  function cruzamentoSyncTableTopScroll() {
+    var top = document.getElementById('cruzamento-table-scroll-top');
+    var spacer = document.getElementById('cruzamento-table-scroll-spacer');
+    var wrap = document.getElementById('cruzamento-table-wrap');
+    var table = wrap ? wrap.querySelector('table') : null;
+    if (!top || !spacer || !wrap || !table) return;
+    spacer.style.width = table.scrollWidth + 'px';
+    top.scrollLeft = wrap.scrollLeft;
   }
 
   function cruzamentoReportMeta(now) {
@@ -885,9 +1020,11 @@
     var rupturaPorCodigo = cruzamentoIndexByCodigo(rupturaRows);
     var resultados = [];
     var semOrigem = 0;
+    var resultado;
 
     if (!cruzamentoState.excesso.valid || !cruzamentoState.ruptura.valid) return;
 
+    cruzamentoResetEdicaoPreview();
     cruzamentoState.indices.excesso = excessoPorCodigo;
     cruzamentoState.indices.ruptura = rupturaPorCodigo;
 
@@ -895,7 +1032,9 @@
       var codigo = cruzamentoCode(ruptura.codigo);
       var excesso = excessoPorCodigo[codigo];
       if (excesso) {
-        resultados.push(cruzamentoBuildResultado(excesso, ruptura));
+        resultado = cruzamentoBuildResultado(excesso, ruptura);
+        resultado._rid = 'r' + resultados.length + '_' + codigo;
+        resultados.push(resultado);
       } else {
         semOrigem += 1;
       }
@@ -918,10 +1057,12 @@
     var filtros = cruzamentoState.filtros;
     var busca = String(filtros.busca || '').toUpperCase();
 
+    if (item._rid && cruzamentoState.linhasExcluidas[item._rid]) return false;
     if (filtros.classeGeral && item.classeGeral !== filtros.classeGeral) return false;
     if (filtros.classeExcesso && item.classeExcesso !== filtros.classeExcesso) return false;
     if (filtros.classeRuptura && item.classeRuptura !== filtros.classeRuptura) return false;
     if ((item.rupturaValor || 0) < (filtros.valorRupturaMin || 0)) return false;
+    if ((item.valorTransferencia || 0) < (filtros.valorTransferenciaMin || 0)) return false;
     if ((item.excessoQtd || 0) < (filtros.qtdExcessoMin || 0)) return false;
     if (filtros.coberturaMin !== '' && (item.cobertura || 0) < filtros.coberturaMin) return false;
     if (filtros.coberturaMax !== '' && (item.cobertura || 0) > filtros.coberturaMax) return false;
@@ -981,6 +1122,7 @@
       ruptura: {}
     };
     cruzamentoState.rupturaSemOrigem = 0;
+    cruzamentoResetEdicaoPreview();
   }
 
   function cruzamentoTotals() {
@@ -1023,54 +1165,52 @@
   function cruzamentoRenderTabela() {
     var body = document.getElementById('cruzamento-resultado-body');
     var rows = cruzamentoState.resultadosFiltrados;
+    var columns = cruzamentoVisibleReportColumns();
     var html = '';
 
     if (!body) return;
 
     if (!cruzamentoState.resultadoPronto) {
-      body.innerHTML = '<tr><td class="empty-cell" colspan="20">Importe as planilhas para visualizar o cruzamento.</td></tr>';
+      body.innerHTML = '<tr><td class="empty-cell" colspan="' + cruzamentoColspan() + '">Importe as planilhas para visualizar o cruzamento.</td></tr>';
+      cruzamentoRenderColunas();
+      cruzamentoRenderEditResumo();
       return;
     }
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td class="empty-cell" colspan="20">'
+      body.innerHTML = '<tr><td class="empty-cell" colspan="' + cruzamentoColspan() + '">'
         + (cruzamentoState.resultados.length
           ? 'Existem produtos em comum, mas nenhum passou nos filtros atuais.'
           : 'Nenhum produto em comum foi encontrado entre a filial em ruptura e a filial em excesso.')
         + '</td></tr>';
+      cruzamentoRenderColunas();
+      cruzamentoRenderEditResumo();
       return;
     }
 
     rows.forEach(function (item) {
-      html += '<tr>';
-      html += '<td><button class="copy-code" type="button" data-code="'
-        + cruzamentoEscape(item.codigo)
-        + '" title="Copiar código">'
-        + cruzamentoEscape(item.codigo)
-        + '</button></td>';
-      html += '<td>' + cruzamentoEscape(item.descricao) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.filialOrigem) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.filialDestino) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.classeGeral) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.classeExcesso) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.classeRuptura) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.estoqueOrigem) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.excessoQtd) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.cobertura) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.mediaDiaExcesso) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtMoney(item.excessoValor) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtMoney(item.estoqueValor) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtMoney(item.rupturaValor) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.dez) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.mediaDiaRuptura) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtMoney(item.custo) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtNumber(item.qtdSugerida) + '</td>';
-      html += '<td class="num">' + cruzamentoFmtMoney(item.valorTransferencia) + '</td>';
-      html += '<td>' + cruzamentoEscape(item.observacao) + '</td>';
+      html += '<tr data-rid="' + cruzamentoEscape(item._rid) + '" class="' + (cruzamentoIsSelected(item._rid) ? 'row-selected' : '') + '">';
+      columns.forEach(function (col) {
+        var cls = col.type === 'money' || col.type === 'number' ? ' class="num"' : '';
+        var value = cruzamentoReportValue(item, col, true);
+        html += '<td data-col="' + cruzamentoEscape(col.key) + '"' + cls + '>';
+        if (col.key === 'codigo') {
+          html += '<button class="copy-code" type="button" data-code="'
+            + cruzamentoEscape(item.codigo)
+            + '" title="Copiar código">'
+            + cruzamentoEscape(item.codigo)
+            + '</button>';
+        } else {
+          html += cruzamentoEscape(value);
+        }
+        html += '</td>';
+      });
       html += '</tr>';
     });
 
     body.innerHTML = html;
+    cruzamentoRenderColunas();
+    cruzamentoRenderEditResumo();
   }
 
   function cruzamentoBindExcessoImport() {
@@ -1125,6 +1265,7 @@
       'cruzamento-filtro-classe-excesso': filtros.classeExcesso,
       'cruzamento-filtro-classe-ruptura': filtros.classeRuptura,
       'cruzamento-filtro-valor-ruptura': filtros.valorRupturaMin,
+      'cruzamento-filtro-valor-transferencia': filtros.valorTransferenciaMin,
       'cruzamento-filtro-qtd-excesso': filtros.qtdExcessoMin,
       'cruzamento-filtro-cobertura-min': filtros.coberturaMin,
       'cruzamento-filtro-cobertura-max': filtros.coberturaMax,
@@ -1151,6 +1292,7 @@
     el = document.getElementById('cruzamento-filtro-classe-ruptura');
     filtros.classeRuptura = el ? el.value : '';
     filtros.valorRupturaMin = cruzamentoNumberValue('cruzamento-filtro-valor-ruptura', 0);
+    filtros.valorTransferenciaMin = cruzamentoNumberValue('cruzamento-filtro-valor-transferencia', 0);
     filtros.qtdExcessoMin = cruzamentoNumberValue('cruzamento-filtro-qtd-excesso', 0);
     filtros.coberturaMin = cruzamentoNumberValue('cruzamento-filtro-cobertura-min', '');
     filtros.coberturaMax = cruzamentoNumberValue('cruzamento-filtro-cobertura-max', '');
@@ -1171,6 +1313,7 @@
       'cruzamento-filtro-classe-excesso',
       'cruzamento-filtro-classe-ruptura',
       'cruzamento-filtro-valor-ruptura',
+      'cruzamento-filtro-valor-transferencia',
       'cruzamento-filtro-qtd-excesso',
       'cruzamento-filtro-cobertura-min',
       'cruzamento-filtro-cobertura-max',
@@ -1203,6 +1346,7 @@
     cruzamentoSetDisabled('cruzamento-btn-exportar', !hasResult);
     cruzamentoSetDisabled('cruzamento-btn-pdf', !hasResult);
     cruzamentoSetDisabled('cruzamento-btn-copiar', !hasFilteredRows);
+    cruzamentoRenderEditResumo();
   }
 
   function cruzamentoExportarExcel() {
@@ -1210,7 +1354,7 @@
     var now = cruzamentoNow();
     var meta = cruzamentoReportMeta(now);
     var totals = cruzamentoTotals();
-    var columns = cruzamentoReportColumns();
+    var columns = cruzamentoVisibleReportColumns();
     var rows = [
       [meta.titulo],
       ['Gerado em', meta.dataHora],
@@ -1247,7 +1391,7 @@
       return;
     }
 
-    rows = rows.concat(cruzamentoReportRows(false));
+    rows = rows.concat(cruzamentoReportRows(false, columns));
     ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = columns.map(function (col) {
       return { wch: col.key === 'descricao' || col.key === 'observacao' ? 34 : 16 };
@@ -1267,8 +1411,8 @@
     cruzamentoSetStatusMessage('Excel gerado: ' + fileName, 'acao-ok');
   }
 
-  function cruzamentoPrintTableHtml(rows) {
-    var columns = cruzamentoReportColumns();
+  function cruzamentoPrintTableHtml(rows, columns) {
+    columns = columns || cruzamentoVisibleReportColumns();
     var html = '<table><thead><tr>';
 
     columns.forEach(function (col) {
@@ -1304,7 +1448,8 @@
     var now = cruzamentoNow();
     var meta = cruzamentoReportMeta(now);
     var totals = cruzamentoTotals();
-    var rows = cruzamentoReportRows(true);
+    var columns = cruzamentoVisibleReportColumns();
+    var rows = cruzamentoReportRows(true, columns);
     var orientation = cruzamentoGetPdfOrientation();
     var win;
     var html;
@@ -1355,7 +1500,7 @@
       + '<div><strong>R$ Excesso filtrado:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.excessoValor)) + '</div>'
       + '<div><strong>Transferência sugerida:</strong> ' + cruzamentoEscape(cruzamentoFmtMoney(totals.transferencia)) + '</div>'
       + '</div><h2>Itens sugeridos</h2>';
-    html += cruzamentoPrintTableHtml(rows);
+    html += cruzamentoPrintTableHtml(rows, columns);
     html += '</body></html>';
 
     win.document.open();
@@ -1470,6 +1615,7 @@
       classeExcesso: '',
       classeRuptura: '',
       valorRupturaMin: 0,
+      valorTransferenciaMin: 0,
       qtdExcessoMin: 0,
       coberturaMin: '',
       coberturaMax: '',
@@ -1487,6 +1633,7 @@
       key: 'prioridade',
       dir: 'asc'
     };
+    cruzamentoResetEdicaoPreview();
   }
 
   function cruzamentoClearFileInputs() {
@@ -1565,6 +1712,91 @@
     });
   }
 
+  function cruzamentoRowFromEvent(event) {
+    var target = event.target;
+    if (!target || !target.closest) return null;
+    if (target.closest('button,input,select,label')) return null;
+    return target.closest('tr[data-rid]');
+  }
+
+  function cruzamentoBindSelecaoTabela() {
+    var body = document.getElementById('cruzamento-resultado-body');
+    if (!body) return;
+
+    body.addEventListener('mousedown', function (event) {
+      var row = cruzamentoRowFromEvent(event);
+      var rid;
+      if (event.button !== 0 || !row) return;
+      event.preventDefault();
+      rid = row.getAttribute('data-rid');
+      cruzamentoState.selecaoArraste.ativo = true;
+      cruzamentoState.selecaoArraste.selecionar = !cruzamentoIsSelected(rid);
+      cruzamentoSetLinhaSelecionada(rid, cruzamentoState.selecaoArraste.selecionar);
+      cruzamentoRenderEditResumo();
+    });
+
+    body.addEventListener('mouseover', function (event) {
+      var row;
+      var rid;
+      if (!cruzamentoState.selecaoArraste.ativo) return;
+      row = cruzamentoRowFromEvent(event);
+      if (!row) return;
+      rid = row.getAttribute('data-rid');
+      cruzamentoSetLinhaSelecionada(rid, cruzamentoState.selecaoArraste.selecionar);
+      cruzamentoRenderEditResumo();
+    });
+
+    document.addEventListener('mouseup', function () {
+      cruzamentoState.selecaoArraste.ativo = false;
+    });
+  }
+
+  function cruzamentoBindEdicaoPreview() {
+    var excluir = document.getElementById('cruzamento-btn-excluir-selecionados');
+    var restaurar = document.getElementById('cruzamento-btn-restaurar-itens');
+    var colunas = document.getElementById('cruzamento-btn-colunas');
+    var panel = document.getElementById('cruzamento-colunas-panel');
+
+    if (excluir) excluir.addEventListener('click', cruzamentoExcluirSelecionados);
+    if (restaurar) restaurar.addEventListener('click', cruzamentoRestaurarItens);
+    if (colunas) colunas.addEventListener('click', cruzamentoToggleColunasPanel);
+    if (panel) {
+      panel.addEventListener('change', function (event) {
+        var target = event.target;
+        var key = target && target.getAttribute ? target.getAttribute('data-col-toggle') : '';
+        if (!key) return;
+        if (target.checked) {
+          delete cruzamentoState.colunasOcultas[key];
+        } else {
+          cruzamentoState.colunasOcultas[key] = true;
+        }
+        cruzamentoRenderTabela();
+      });
+    }
+  }
+
+  function cruzamentoBindTableScrolls() {
+    var top = document.getElementById('cruzamento-table-scroll-top');
+    var wrap = document.getElementById('cruzamento-table-wrap');
+    if (!top || !wrap) return;
+
+    top.addEventListener('scroll', function () {
+      if (cruzamentoState.scrollSyncing) return;
+      cruzamentoState.scrollSyncing = true;
+      wrap.scrollLeft = top.scrollLeft;
+      cruzamentoState.scrollSyncing = false;
+    });
+
+    wrap.addEventListener('scroll', function () {
+      if (cruzamentoState.scrollSyncing) return;
+      cruzamentoState.scrollSyncing = true;
+      top.scrollLeft = wrap.scrollLeft;
+      cruzamentoState.scrollSyncing = false;
+    });
+
+    window.addEventListener('resize', cruzamentoSyncTableTopScroll);
+  }
+
   function cruzamentoRenderAccess() {
     var app = document.getElementById('cruzamento-app');
     var denied = document.getElementById('cruzamento-denied');
@@ -1598,6 +1830,9 @@
   cruzamentoBindAcoes();
   cruzamentoBindOrdenacaoTabela();
   cruzamentoBindCopiarCodigoTabela();
+  cruzamentoBindSelecaoTabela();
+  cruzamentoBindEdicaoPreview();
+  cruzamentoBindTableScrolls();
   cruzamentoRenderKpis();
   cruzamentoRenderTabela();
   cruzamentoRenderAccess();
