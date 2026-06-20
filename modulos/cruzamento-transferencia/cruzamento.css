@@ -430,6 +430,77 @@ textarea:focus {
   text-align: center;
 }
 
+.edit-toolbar {
+  border-bottom: 1px solid #c09000;
+  background: #fff7d5;
+}
+
+.edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+}
+
+.edit-summary {
+  min-height: 20px;
+  padding: 2px 6px;
+  border: 1px solid #c09000;
+  background: #fff0a8;
+  color: #553300;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 15px;
+}
+
+.columns-panel {
+  padding: 5px 6px 6px;
+  border-top: 1px solid #e0bb54;
+  background: #fff1b8;
+}
+
+.columns-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 3px 8px;
+}
+
+.columns-grid label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  color: #000;
+  font-size: 11px;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 14px;
+}
+
+.columns-grid input {
+  width: 13px;
+  height: 13px;
+}
+
+.columns-grid label.is-locked {
+  color: #555;
+}
+
+.table-scroll-top {
+  height: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid #c09000;
+  background: #f8edc8;
+}
+
+.table-scroll-spacer {
+  width: 1880px;
+  height: 1px;
+}
+
 .table-wrap {
   min-height: 210px;
   overflow-x: auto;
@@ -493,6 +564,21 @@ tbody tr:nth-child(even) td {
 
 tbody tr:hover td {
   background: #fff0b6 !important;
+}
+
+tbody tr[data-rid] {
+  cursor: default;
+  user-select: none;
+}
+
+tbody tr.row-selected td,
+tbody tr.row-selected:nth-child(even) td {
+  background: #cfe8ff !important;
+  color: #001d4d;
+}
+
+tbody tr.row-selected:hover td {
+  background: #b9dcff !important;
 }
 
 td.num {
