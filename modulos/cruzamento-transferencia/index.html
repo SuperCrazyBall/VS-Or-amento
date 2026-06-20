@@ -139,6 +139,10 @@
                 <input id="cruzamento-filtro-valor-ruptura" class="vs-input" type="number" min="0" step="0.01" value="0">
               </label>
               <label>
+                Valor Transferência mínimo
+                <input id="cruzamento-filtro-valor-transferencia" class="vs-input" type="number" min="0" step="0.01" value="0">
+              </label>
+              <label>
                 Excesso mínimo
                 <input id="cruzamento-filtro-qtd-excesso" class="vs-input" type="number" min="0" step="1" value="0">
               </label>
@@ -188,30 +192,42 @@
             <div class="powerbi-rule">
               Produtos Classe A: 45 dias | Produtos Classe B: 35 dias | Produtos Classe C: 30 dias | Período: 90 dias
             </div>
-            <div class="table-wrap">
+            <div class="edit-toolbar">
+              <div class="edit-actions">
+                <button id="cruzamento-btn-excluir-selecionados" class="vbtn" type="button" disabled>Excluir Selecionados</button>
+                <button id="cruzamento-btn-restaurar-itens" class="vbtn" type="button" disabled>Restaurar Itens</button>
+                <button id="cruzamento-btn-colunas" class="vbtn" type="button">Colunas</button>
+                <span id="cruzamento-edit-resumo" class="edit-summary">Selecionados: 0 | Excluídos: 0</span>
+              </div>
+              <div id="cruzamento-colunas-panel" class="columns-panel is-hidden" aria-label="Colunas visíveis"></div>
+            </div>
+            <div id="cruzamento-table-scroll-top" class="table-scroll-top" aria-hidden="true">
+              <div id="cruzamento-table-scroll-spacer" class="table-scroll-spacer"></div>
+            </div>
+            <div id="cruzamento-table-wrap" class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="codigo">Código</th>
-                    <th data-sort="descricao">Descrição</th>
-                    <th>Filial Origem</th>
-                    <th>Filial Destino</th>
-                    <th data-sort="classeGeral">Classe Geral</th>
-                    <th>Classe Filial Excesso</th>
-                    <th>Classe Filial Ruptura</th>
-                    <th>Estoque Origem</th>
-                    <th data-sort="excessoQtd">Excesso Qtd</th>
-                    <th data-sort="cobertura">Cobertura</th>
-                    <th>Média Dia Excesso</th>
-                    <th>R$ Excesso</th>
-                    <th>R$ Estoque</th>
-                    <th data-sort="rupturaValor">R$ Ruptura</th>
-                    <th>DEZ</th>
-                    <th>Média Dia Ruptura</th>
-                    <th>Custo</th>
-                    <th data-sort="qtdSugerida">Qtd Sugerida Transferir</th>
-                    <th data-sort="valorTransferencia">Valor Estimado Transferência</th>
-                    <th>Observação</th>
+                    <th data-col="codigo" data-sort="codigo">Código</th>
+                    <th data-col="descricao" data-sort="descricao">Descrição</th>
+                    <th data-col="filialOrigem">Filial Origem</th>
+                    <th data-col="filialDestino">Filial Destino</th>
+                    <th data-col="classeGeral" data-sort="classeGeral">Classe Geral</th>
+                    <th data-col="classeExcesso">Classe Filial Excesso</th>
+                    <th data-col="classeRuptura">Classe Filial Ruptura</th>
+                    <th data-col="estoqueOrigem">Estoque Origem</th>
+                    <th data-col="excessoQtd" data-sort="excessoQtd">Excesso Qtd</th>
+                    <th data-col="cobertura" data-sort="cobertura">Cobertura</th>
+                    <th data-col="mediaDiaExcesso">Média Dia Excesso</th>
+                    <th data-col="excessoValor">R$ Excesso</th>
+                    <th data-col="estoqueValor">R$ Estoque</th>
+                    <th data-col="rupturaValor" data-sort="rupturaValor">R$ Ruptura</th>
+                    <th data-col="dez">DEZ</th>
+                    <th data-col="mediaDiaRuptura">Média Dia Ruptura</th>
+                    <th data-col="custo">Custo</th>
+                    <th data-col="qtdSugerida" data-sort="qtdSugerida">Qtd Sugerida Transferir</th>
+                    <th data-col="valorTransferencia" data-sort="valorTransferencia">Valor Estimado Transferência</th>
+                    <th data-col="observacao">Observação</th>
                   </tr>
                 </thead>
                 <tbody id="cruzamento-resultado-body">
