@@ -3,7 +3,9 @@
   var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha não parece ser de RUPTURA. Verifique se contém CODIGO_PRODUTO e R$ RUPTURA.';
   var CRUZAMENTO_ORCAMENTO_INVALID_MESSAGE = 'Este PDF nao parece ser um orcamento valido. Verifique se contem codigo, descricao e quantidade.';
 
-var cruzamentoState = {
+
+
+  var cruzamentoState = {
     status: 'inicial',
     modulo: 'cruzamento-transferencia',
     currentUser: null,
@@ -292,14 +294,49 @@ var cruzamentoState = {
     return 9;
   }
 
+  function cruzamentoAddIndexCodigo(index, codigo, item) {
+    codigo = cruzamentoCode(codigo);
+    if (!codigo) return;
+    if (!index[codigo]) index[codigo] = item;
+  }
+
   function cruzamentoIndexByCodigo(items) {
     var index = {};
     (items || []).forEach(function (item) {
-      var codigo = cruzamentoCode(item && item.codigo);
-      if (!codigo) return;
-      if (!index[codigo]) index[codigo] = item;
+      cruzamentoAddIndexCodigo(index, item && item.codigo, item);
+      (item && item.codigoAlternativos || []).forEach(function (codigo) {
+        cruzamentoAddIndexCodigo(index, codigo, item);
+      });
     });
     return index;
+  }
+
+  function cruzamentoSemZeros(value) {
+    return cruzamentoCode(value).replace(/^0+/, '') || cruzamentoCode(value);
+  }
+
+  function cruzamentoFindByCodigoFlex(index, codigo) {
+    var clean = cruzamentoCode(codigo);
+    var semZeros = cruzamentoSemZeros(clean);
+    var keys;
+    var i;
+    var key;
+    var keySemZeros;
+
+    if (!clean) return null;
+    if (index[clean]) return index[clean];
+    if (semZeros && index[semZeros]) return index[semZeros];
+
+    keys = Object.keys(index);
+    for (i = 0; i < keys.length; i += 1) {
+      key = keys[i];
+      keySemZeros = cruzamentoSemZeros(key);
+      if (keySemZeros && keySemZeros === semZeros) return index[key];
+      if (clean.length >= 5 && key.length >= 5 && (key.indexOf(clean) >= 0 || clean.indexOf(key) >= 0)) return index[key];
+      if (semZeros.length >= 5 && keySemZeros.length >= 5 && (keySemZeros.indexOf(semZeros) >= 0 || semZeros.indexOf(keySemZeros) >= 0)) return index[key];
+    }
+
+    return null;
   }
 
   function cruzamentoSplitCodigoDescricao(value) {
@@ -594,7 +631,7 @@ var cruzamentoState = {
     return {
       titulo: 'Cruzamento de Excesso x Ruptura',
       dataHora: cruzamentoFormatDateTime(now),
-      filialOrigem: cruzamentoState.excesso.filial || (cruzamentoState.excesso.origemTipo === 'pdf' ? 'OrÃ§amento PDF' : '-'),
+      filialOrigem: cruzamentoState.excesso.filial || (cruzamentoState.excesso.origemTipo === 'pdf' ? 'Orcamento PDF' : '-'),
       filialDestino: cruzamentoState.ruptura.filial || '-',
       arquivoExcesso: cruzamentoState.excesso.fileName || '-',
       arquivoRuptura: cruzamentoState.ruptura.fileName || '-',
@@ -685,7 +722,7 @@ var cruzamentoState = {
     if (!status) return;
     if (cruzamentoState.status === 'excesso-lendo') {
       state = 'carregando';
-      status.textContent = cruzamentoState.excesso.origemTipo === 'pdf' ? 'Lendo orÃ§amento PDF...' : 'Lendo arquivo de excesso...';
+      status.textContent = cruzamentoState.excesso.origemTipo === 'pdf' ? 'Lendo orcamento PDF...' : 'Lendo arquivo de excesso...';
     } else if (cruzamentoState.status === 'ruptura-lendo') {
       state = 'carregando';
       status.textContent = 'Lendo arquivo de ruptura...';
@@ -718,10 +755,10 @@ var cruzamentoState = {
       status.textContent = 'Origem importada. Importe a planilha de ruptura para continuar.';
     } else if (cruzamentoState.ruptura.valid) {
       state = 'parcial';
-      status.textContent = 'Ruptura importada. Importe o excesso Excel ou o orÃ§amento PDF para continuar.';
+      status.textContent = 'Ruptura importada. Importe o excesso Excel ou o orcamento PDF para continuar.';
     } else {
       state = 'inicial';
-      status.textContent = 'Aguardando importaÃ§Ãµes. Comece importando Excesso/OrÃ§amento PDF e Ruptura.';
+      status.textContent = 'Aguardando importacoes. Comece importando Excesso/Orcamento PDF e Ruptura.';
     }
     status.setAttribute('data-state', state);
   }
@@ -874,13 +911,18 @@ var cruzamentoState = {
     var quantity = null;
     var quantityIndex = -1;
     var descricao;
+    var codigos = [];
 
     if (!text || cruzamentoIsOrcamentoNoise(text)) return null;
-    codeMatch = text.match(/(?:^|\s)(\d{4,14})(?=\s|$)/);
-    if (!codeMatch) return null;
+    text.replace(/(?:^|\s)(\d{4,14})(?=\s|$)/g, function (full, value, offset) {
+      codigos.push({ raw: value, codigo: cruzamentoCode(value), index: offset + full.indexOf(value), end: offset + full.indexOf(value) + String(value).length });
+      return full;
+    });
+    if (!codigos.length) return null;
 
-    codigo = cruzamentoCode(codeMatch[1]);
-    after = text.slice(codeMatch.index + codeMatch[0].length).trim();
+    codeMatch = codigos[0];
+    codigo = codeMatch.codigo;
+    after = text.slice(codeMatch.end).trim();
     if (!codigo || !after) return null;
 
     qtyMatch = after.match(/\b(?:QTD|QTDE|QUANT|QUANTIDADE)\b\s*[:\-]?\s*(\d{1,6}(?:[.,]\d{1,3})?)/i);
@@ -899,10 +941,11 @@ var cruzamentoState = {
     if (quantity === null || quantity <= 0 || quantityIndex < 0) return null;
     descricao = after.slice(0, quantityIndex).replace(/\b(QTD|QTDE|QUANT|QUANTIDADE)\b\s*[:\-]?\s*$/i, '').trim();
     if (!descricao) descricao = after.replace(String(quantity), '').trim();
-    if (!descricao) descricao = 'Produto do orÃ§amento PDF';
+    if (!descricao) descricao = 'Produto do orcamento PDF';
 
     return {
       codigo: codigo,
+      codigoAlternativos: codigos.map(function (item) { return item.codigo; }).filter(Boolean),
       descricao: descricao,
       quantidade: quantity
     };
@@ -923,6 +966,7 @@ var cruzamentoState = {
         if (!byCode[item.codigo]) {
           byCode[item.codigo] = {
             codigo: item.codigo,
+            codigoAlternativos: item.codigoAlternativos || [],
             descricao: item.descricao,
             origemTipo: 'pdf',
             estoque: null,
@@ -958,7 +1002,7 @@ var cruzamentoState = {
     cruzamentoState.excesso.origemTipo = 'pdf';
 
     if (!file) {
-      cruzamentoSetExcessoError('', 'Aguardando orÃ§amento PDF.');
+      cruzamentoSetExcessoError('', 'Aguardando orcamento PDF.');
       cruzamentoRenderExcesso();
       return;
     }
@@ -970,18 +1014,18 @@ var cruzamentoState = {
     }
 
     if (!pdfjs) {
-      cruzamentoSetExcessoError(file.name, 'Biblioteca PDF.js nÃ£o encontrada para ler o orÃ§amento.');
+      cruzamentoSetExcessoError(file.name, 'Biblioteca PDF.js nao encontrada para ler o orcamento.');
       cruzamentoRenderExcesso();
       return;
     }
 
     cruzamentoState.excesso.fileName = file.name;
-    cruzamentoState.excesso.filial = cruzamentoState.excesso.filial || 'OrÃ§amento PDF';
+    cruzamentoState.excesso.filial = cruzamentoState.excesso.filial || 'Orcamento PDF';
     cruzamentoState.excesso.headers = ['CODIGO', 'DESCRICAO', 'QUANTIDADE'];
     cruzamentoState.excesso.rows = [];
     cruzamentoState.excesso.items = [];
     cruzamentoState.excesso.valid = false;
-    cruzamentoState.excesso.message = 'Lendo orÃ§amento PDF...';
+    cruzamentoState.excesso.message = 'Lendo orcamento PDF...';
     cruzamentoState.status = 'excesso-lendo';
     cruzamentoClearResultados();
     cruzamentoRenderExcesso();
@@ -999,14 +1043,14 @@ var cruzamentoState = {
         cruzamentoState.excesso.items = items;
         cruzamentoState.excesso.valid = items.length > 0;
         cruzamentoState.excesso.message = items.length > 0
-          ? 'OrÃ§amento PDF validado. ' + items.length + ' itens considerados para cruzamento.'
+          ? 'Orcamento PDF validado. ' + items.length + ' itens considerados para cruzamento.'
           : CRUZAMENTO_ORCAMENTO_INVALID_MESSAGE;
         cruzamentoState.status = items.length > 0 ? 'excesso-ok' : 'excesso-invalido';
         cruzamentoRenderExcesso();
         cruzamentoRenderMainStatus();
         cruzamentoRenderAcoes();
       }).catch(function () {
-        cruzamentoSetExcessoError(file.name, 'Falha ao ler o texto do orÃ§amento PDF.');
+        cruzamentoSetExcessoError(file.name, 'Falha ao ler o texto do orcamento PDF.');
         cruzamentoState.excesso.origemTipo = 'pdf';
         cruzamentoRenderExcesso();
       });
@@ -1197,23 +1241,23 @@ var cruzamentoState = {
     if (excesso.origemTipo === 'pdf') {
       if (excessoQtd === null || excessoQtd <= 0) {
         sugerida = 0;
-        observacoes.push('SugestÃ£o zerada sem quantidade vÃ¡lida no orÃ§amento PDF');
+        observacoes.push('Sugestao zerada sem quantidade valida no orcamento PDF');
       } else {
         sugerida = cruzamentoRoundQty(Math.max(0, excessoQtd));
-        observacoes.push('SugestÃ£o informada no orÃ§amento PDF');
+        observacoes.push('Sugestao informada no orcamento PDF');
       }
     } else if (excessoQtd === null) {
       sugerida = 0;
-      observacoes.push('SugestÃ£o zerada sem EXCESSO vÃ¡lido');
+      observacoes.push('Sugestao zerada sem EXCESSO valido');
     } else if (mediaDiaExcesso === null) {
       sugerida = 0;
-      observacoes.push('SugestÃ£o zerada sem MÃ‰DIA DIA EXCESSO vÃ¡lida');
+      observacoes.push('Sugestao zerada sem MEDIA DIA EXCESSO valida');
     } else if (excessoQtd <= 0) {
       sugerida = 0;
       observacoes.push('Sem excesso disponivel');
     } else {
       sugerida = cruzamentoRoundQty(Math.max(0, excessoQtd * mediaDiaExcesso));
-      observacoes.push('SugestÃ£o por EXCESSO x MÃ‰DIA DIA');
+      observacoes.push('Sugestao por EXCESSO x MEDIA DIA');
     }
 
     if (custo !== null && custo > 0) {
@@ -1231,7 +1275,7 @@ var cruzamentoState = {
     return {
       codigo: excesso.codigo,
       descricao: excesso.descricao || ruptura.descricao,
-      filialOrigem: cruzamentoState.excesso.filial || (excesso.origemTipo === 'pdf' ? 'OrÃ§amento PDF' : '-'),
+      filialOrigem: cruzamentoState.excesso.filial || (cruzamentoState.excesso.origemTipo === 'pdf' ? 'Orcamento PDF' : '-'),
       filialDestino: cruzamentoState.ruptura.filial || '-',
       classeGeral: excesso.classeGeral || ruptura.classeGeral,
       classeExcesso: excesso.classeFilialExcesso,
@@ -1269,7 +1313,7 @@ var cruzamentoState = {
 
     rupturaRows.forEach(function (ruptura) {
       var codigo = cruzamentoCode(ruptura.codigo);
-      var excesso = excessoPorCodigo[codigo];
+      var excesso = cruzamentoFindByCodigoFlex(excessoPorCodigo, codigo);
       if (excesso) {
         resultado = cruzamentoBuildResultado(excesso, ruptura);
         resultado._rid = 'r' + resultados.length + '_' + codigo;
@@ -1471,7 +1515,7 @@ var cruzamentoState = {
     cruzamentoState.excesso.items = [];
     cruzamentoState.excesso.valid = false;
     cruzamentoState.excesso.origemTipo = tipo;
-    cruzamentoState.excesso.message = tipo === 'pdf' ? 'Aguardando orÃ§amento PDF.' : 'Aguardando arquivo de excesso.';
+    cruzamentoState.excesso.message = tipo === 'pdf' ? 'Aguardando orcamento PDF.' : 'Aguardando arquivo de excesso.';
     cruzamentoState.status = 'inicial';
     cruzamentoClearResultados();
     cruzamentoRenderExcesso();
