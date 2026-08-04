@@ -713,3 +713,67 @@ td.num {
     max-height: none;
   }
 }
+
+/* Ajuste do seletor Excesso Excel / Orcamento PDF */
+.origem-bd {
+  grid-template-columns: minmax(160px, 180px) minmax(280px, 1fr) minmax(180px, 260px);
+  align-items: start;
+}
+
+.origem-bd .source-choice {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 74px;
+}
+
+.origem-bd .source-choice label {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px !important;
+  min-height: 24px;
+  padding: 1px 2px;
+  white-space: nowrap;
+}
+
+.origem-bd .source-choice input {
+  flex: 0 0 auto;
+  width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  margin: 0;
+}
+
+.origem-bd .source-area {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 74px;
+}
+
+.origem-bd .origem-field {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.origem-bd .import-summary {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .origem-bd {
+    grid-template-columns: 1fr;
+  }
+  .origem-bd .source-choice,
+  .origem-bd .source-area,
+  .origem-bd .origem-field,
+  .origem-bd .import-summary {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
