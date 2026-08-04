@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cruzamento de Excesso x Ruptura</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="stylesheet" href="cruzamento.css">
 </head>
 <body>
@@ -16,7 +17,7 @@
           <div>
             <h1>Cruzamento de Excesso x Ruptura por Filial</h1>
             <p class="intro">
-              Importe a planilha de excesso da filial origem, importe a planilha de ruptura da filial destino
+              Importe a planilha de excesso ou um orçamento PDF da origem, importe a planilha de ruptura da filial destino
               e gere um relatório de transferência sugerida.
             </p>
           </div>
@@ -26,7 +27,7 @@
         </header>
 
         <div class="flow-strip" aria-label="Fluxo do cruzamento">
-          <div class="flow-step"><strong>1</strong><span>Excesso origem</span></div>
+          <div class="flow-step"><strong>1</strong><span>Excesso/PDF origem</span></div>
           <div class="flow-step"><strong>2</strong><span>Ruptura destino</span></div>
           <div class="flow-step"><strong>3</strong><span>Análise</span></div>
           <div class="flow-step"><strong>4</strong><span>Relatório</span></div>
@@ -65,16 +66,25 @@
 
         <section class="panel-grid" aria-label="Importações">
           <article class="mini-panel">
-            <div class="mini-hd">1. Importar Excesso da Filial Origem</div>
-            <div class="mini-bd">
-              <div id="cruzamento-excesso-drop" class="file-drop">
+            <div class="mini-hd">1. Importar Excesso da Origem</div>
+            <div class="mini-bd origem-bd">
+              <div class="source-choice" aria-label="Tipo de origem do excesso">
+                <label><input id="cruzamento-fonte-excel" name="cruzamento-fonte-origem" type="radio" value="excel" checked> Excesso Excel</label>
+                <label><input id="cruzamento-fonte-pdf" name="cruzamento-fonte-origem" type="radio" value="pdf"> Orçamento PDF</label>
+              </div>
+              <div id="cruzamento-excesso-excel-area" class="file-drop source-area">
                 <strong id="cruzamento-excesso-file">Nenhum arquivo selecionado</strong>
                 <span class="muted">Arquivo esperado: .xlsx com estoque, média, cobertura e excesso.</span>
                 <input id="cruzamento-excesso-input" class="vs-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
               </div>
-              <label>
-                Filial origem
-                <input id="cruzamento-excesso-filial" class="vs-input" type="text" value="" placeholder="Digite a filial origem">
+              <div id="cruzamento-orcamento-pdf-area" class="file-drop source-area is-hidden">
+                <strong id="cruzamento-orcamento-file">Nenhum PDF selecionado</strong>
+                <span class="muted">Arquivo esperado: .pdf de orçamento com código, descrição e quantidade sugerida.</span>
+                <input id="cruzamento-orcamento-input" class="vs-file" type="file" accept=".pdf,application/pdf">
+              </div>
+              <label class="origem-field">
+                Origem informada
+                <input id="cruzamento-excesso-filial" class="vs-input" type="text" value="" placeholder="Digite a filial ou origem do arquivo">
               </label>
               <div id="cruzamento-excesso-summary" class="import-summary import-empty">
                 <span id="cruzamento-excesso-lines">Linhas lidas: 0</span>
