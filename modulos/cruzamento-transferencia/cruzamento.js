@@ -1,8 +1,9 @@
 (function () {
   var CRUZAMENTO_EXCESSO_INVALID_MESSAGE = 'Esta planilha não parece ser de EXCESSO. Verifique se contém CODIGO DESCRICAO e EXCESSO.';
   var CRUZAMENTO_RUPTURA_INVALID_MESSAGE = 'Esta planilha não parece ser de RUPTURA. Verifique se contém CODIGO_PRODUTO e R$ RUPTURA.';
+  var CRUZAMENTO_ORCAMENTO_INVALID_MESSAGE = 'Este PDF nao parece ser um orcamento valido. Verifique se contem codigo, descricao e quantidade.';
 
-  var cruzamentoState = {
+var cruzamentoState = {
     status: 'inicial',
     modulo: 'cruzamento-transferencia',
     currentUser: null,
@@ -11,6 +12,7 @@
     excesso: {
       fileName: '',
       filial: '',
+      origemTipo: 'excel',
       headers: [],
       rows: [],
       items: [],
@@ -161,6 +163,20 @@
       return null;
     }
     return window.XLSX || null;
+  }
+
+  function cruzamentoGetPDFJS() {
+    var pdfjs = null;
+    try {
+      if (window.parent && window.parent.pdfjsLib) pdfjs = window.parent.pdfjsLib;
+    } catch (err) {
+      pdfjs = null;
+    }
+    if (!pdfjs && window.pdfjsLib) pdfjs = window.pdfjsLib;
+    if (pdfjs && pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    return pdfjs;
   }
 
   function cruzamentoPickSheetName(workbook) {
@@ -578,7 +594,7 @@
     return {
       titulo: 'Cruzamento de Excesso x Ruptura',
       dataHora: cruzamentoFormatDateTime(now),
-      filialOrigem: cruzamentoState.excesso.filial || '-',
+      filialOrigem: cruzamentoState.excesso.filial || (cruzamentoState.excesso.origemTipo === 'pdf' ? 'OrÃ§amento PDF' : '-'),
       filialDestino: cruzamentoState.ruptura.filial || '-',
       arquivoExcesso: cruzamentoState.excesso.fileName || '-',
       arquivoRuptura: cruzamentoState.ruptura.fileName || '-',
@@ -588,16 +604,19 @@
 
   function cruzamentoRenderExcesso() {
     var fileEl = document.getElementById('cruzamento-excesso-file');
+    var pdfFileEl = document.getElementById('cruzamento-orcamento-file');
     var linesEl = document.getElementById('cruzamento-excesso-lines');
     var statusEl = document.getElementById('cruzamento-excesso-status');
     var summaryEl = document.getElementById('cruzamento-excesso-summary');
     var kpiEl = document.getElementById('cruzamento-kpi-excesso');
     var excesso = cruzamentoState.excesso;
+    var isPdf = excesso.origemTipo === 'pdf';
 
-    if (fileEl) fileEl.textContent = excesso.fileName || 'Nenhum arquivo selecionado';
+    if (fileEl) fileEl.textContent = !isPdf && excesso.fileName ? excesso.fileName : 'Nenhum arquivo selecionado';
+    if (pdfFileEl) pdfFileEl.textContent = isPdf && excesso.fileName ? excesso.fileName : 'Nenhum PDF selecionado';
     if (linesEl) linesEl.textContent = 'Linhas lidas: ' + excesso.rows.length;
     if (statusEl) statusEl.textContent = excesso.message;
-    if (kpiEl) kpiEl.textContent = String(excesso.rows.length);
+    if (kpiEl) kpiEl.textContent = String(excesso.valid ? excesso.items.length : excesso.rows.length);
 
     if (summaryEl) {
       summaryEl.classList.toggle('import-empty', !excesso.fileName);
@@ -605,6 +624,7 @@
       summaryEl.classList.toggle('import-error', !!excesso.fileName && !excesso.valid);
     }
 
+    cruzamentoRenderOrigemTipo();
     cruzamentoRenderKpis();
   }
 
@@ -665,7 +685,7 @@
     if (!status) return;
     if (cruzamentoState.status === 'excesso-lendo') {
       state = 'carregando';
-      status.textContent = 'Lendo arquivo de excesso...';
+      status.textContent = cruzamentoState.excesso.origemTipo === 'pdf' ? 'Lendo orÃ§amento PDF...' : 'Lendo arquivo de excesso...';
     } else if (cruzamentoState.status === 'ruptura-lendo') {
       state = 'carregando';
       status.textContent = 'Lendo arquivo de ruptura...';
@@ -692,16 +712,16 @@
       status.textContent = CRUZAMENTO_RUPTURA_INVALID_MESSAGE;
     } else if (cruzamentoState.excesso.valid && cruzamentoState.ruptura.valid) {
       state = 'pronto';
-      status.textContent = 'Excesso e ruptura importados. Clique em Analisar Cruzamento.';
+      status.textContent = 'Origem e ruptura importadas. Clique em Analisar Cruzamento.';
     } else if (cruzamentoState.excesso.valid) {
       state = 'parcial';
-      status.textContent = 'Excesso importado. Importe a planilha de ruptura para continuar.';
+      status.textContent = 'Origem importada. Importe a planilha de ruptura para continuar.';
     } else if (cruzamentoState.ruptura.valid) {
       state = 'parcial';
-      status.textContent = 'Ruptura importada. Importe a planilha de excesso para continuar.';
+      status.textContent = 'Ruptura importada. Importe o excesso Excel ou o orÃ§amento PDF para continuar.';
     } else {
       state = 'inicial';
-      status.textContent = 'Aguardando importações. Comece importando Excesso e Ruptura.';
+      status.textContent = 'Aguardando importaÃ§Ãµes. Comece importando Excesso/OrÃ§amento PDF e Ruptura.';
     }
     status.setAttribute('data-state', state);
   }
@@ -726,6 +746,7 @@
     }
 
     cruzamentoState.excesso.fileName = file.name;
+    cruzamentoState.excesso.origemTipo = 'excel';
     cruzamentoState.excesso.headers = [];
     cruzamentoState.excesso.rows = [];
     cruzamentoState.excesso.items = [];
@@ -765,6 +786,7 @@
         validation = cruzamentoValidateHeaders(headers, cruzamentoExcessoRequiredHeaders);
 
         cruzamentoState.excesso.fileName = file.name;
+        cruzamentoState.excesso.origemTipo = 'excel';
         cruzamentoState.excesso.headers = headers;
         cruzamentoState.excesso.rows = dataRows;
         cruzamentoState.excesso.valid = validation.valid;
@@ -787,6 +809,215 @@
     reader.readAsArrayBuffer(file);
   }
 
+  function cruzamentoPdfLinesFromContent(content) {
+    var items = content.items.map(function (item) {
+      return {
+        text: String(item.str || '').trim(),
+        x: item.transform && item.transform.length > 4 ? item.transform[4] : 0,
+        y: item.transform && item.transform.length > 5 ? item.transform[5] : 0
+      };
+    }).filter(function (item) {
+      return item.text;
+    }).sort(function (a, b) {
+      if (Math.abs(b.y - a.y) > 2) return b.y - a.y;
+      return a.x - b.x;
+    });
+    var lines = [];
+    var current = null;
+    items.forEach(function (item) {
+      if (!current || Math.abs(current.y - item.y) > 2) {
+        current = { y: item.y, parts: [item.text] };
+        lines.push(current);
+      } else {
+        current.parts.push(item.text);
+      }
+    });
+    return lines.map(function (line) {
+      return line.parts.join(' ').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+  }
+
+  function cruzamentoReadPdfLines(pdfjs, data) {
+    return pdfjs.getDocument({ data: data }).promise.then(function (pdf) {
+      var allLines = [];
+      var sequence = Promise.resolve();
+      var pageNumber;
+      for (pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        (function (num) {
+          sequence = sequence.then(function () {
+            return pdf.getPage(num).then(function (page) {
+              return page.getTextContent().then(function (content) {
+                allLines = allLines.concat(cruzamentoPdfLinesFromContent(content));
+              });
+            });
+          });
+        })(pageNumber);
+      }
+      return sequence.then(function () {
+        return allLines;
+      });
+    });
+  }
+
+  function cruzamentoIsOrcamentoNoise(line) {
+    return /^(TOTAL|SUBTOTAL|VENDEDOR|CLIENTE|ORCAMENTO|ORÃ‡AMENTO|DATA|CODIGO|CÃ“DIGO|DESCRICAO|DESCRIÃ‡ÃƒO|QTDE|QUANTIDADE)\b/i.test(line);
+  }
+
+  function cruzamentoParseOrcamentoPdfLine(line) {
+    var text = String(line || '').replace(/\s+/g, ' ').trim();
+    var codeMatch;
+    var codigo;
+    var after;
+    var qtyMatch;
+    var numberRe;
+    var numberMatch;
+    var quantity = null;
+    var quantityIndex = -1;
+    var descricao;
+
+    if (!text || cruzamentoIsOrcamentoNoise(text)) return null;
+    codeMatch = text.match(/(?:^|\s)(\d{4,14})(?=\s|$)/);
+    if (!codeMatch) return null;
+
+    codigo = cruzamentoCode(codeMatch[1]);
+    after = text.slice(codeMatch.index + codeMatch[0].length).trim();
+    if (!codigo || !after) return null;
+
+    qtyMatch = after.match(/\b(?:QTD|QTDE|QUANT|QUANTIDADE)\b\s*[:\-]?\s*(\d{1,6}(?:[.,]\d{1,3})?)/i);
+    if (qtyMatch) {
+      quantity = cruzamentoNumber(qtyMatch[1]);
+      quantityIndex = qtyMatch.index;
+    } else {
+      numberRe = /(?:^|\s)(\d{1,6}(?:[.,]\d{1,3})?)(?=\s|$)/g;
+      while ((numberMatch = numberRe.exec(after))) {
+        quantity = cruzamentoNumber(numberMatch[1]);
+        quantityIndex = numberMatch.index;
+        if (quantity !== null && quantity > 0) break;
+      }
+    }
+
+    if (quantity === null || quantity <= 0 || quantityIndex < 0) return null;
+    descricao = after.slice(0, quantityIndex).replace(/\b(QTD|QTDE|QUANT|QUANTIDADE)\b\s*[:\-]?\s*$/i, '').trim();
+    if (!descricao) descricao = after.replace(String(quantity), '').trim();
+    if (!descricao) descricao = 'Produto do orÃ§amento PDF';
+
+    return {
+      codigo: codigo,
+      descricao: descricao,
+      quantidade: quantity
+    };
+  }
+
+  function cruzamentoParseOrcamentoPdfLines(lines) {
+    var parsed = [];
+    var pending = '';
+    var byCode = {};
+    lines.forEach(function (line) {
+      var clean = String(line || '').replace(/\s+/g, ' ').trim();
+      var candidate;
+      var item;
+      if (!clean) return;
+      candidate = pending ? pending + ' ' + clean : clean;
+      item = cruzamentoParseOrcamentoPdfLine(candidate);
+      if (item) {
+        if (!byCode[item.codigo]) {
+          byCode[item.codigo] = {
+            codigo: item.codigo,
+            descricao: item.descricao,
+            origemTipo: 'pdf',
+            estoque: null,
+            mediaDia: null,
+            cobertura: null,
+            excessoQtd: 0,
+            percExcesso: null,
+            valorExcesso: null,
+            valorEstoque: null,
+            excessoValor: null,
+            estoqueValor: null,
+            classeGeral: '',
+            classeFilialExcesso: '',
+            display: {}
+          };
+          parsed.push(byCode[item.codigo]);
+        }
+        byCode[item.codigo].excessoQtd = cruzamentoRoundQty((byCode[item.codigo].excessoQtd || 0) + item.quantidade);
+        pending = '';
+      } else if (/\d{4,14}/.test(candidate) && !cruzamentoIsOrcamentoNoise(candidate)) {
+        pending = candidate;
+      } else {
+        pending = '';
+      }
+    });
+    return parsed;
+  }
+
+  function cruzamentoReadOrcamentoPdfFile(file) {
+    var pdfjs = cruzamentoGetPDFJS();
+    var reader;
+
+    cruzamentoState.excesso.origemTipo = 'pdf';
+
+    if (!file) {
+      cruzamentoSetExcessoError('', 'Aguardando orÃ§amento PDF.');
+      cruzamentoRenderExcesso();
+      return;
+    }
+
+    if (!/\.pdf$/i.test(file.name)) {
+      cruzamentoSetExcessoError(file.name, 'Selecione um arquivo .pdf vÃ¡lido.');
+      cruzamentoRenderExcesso();
+      return;
+    }
+
+    if (!pdfjs) {
+      cruzamentoSetExcessoError(file.name, 'Biblioteca PDF.js nÃ£o encontrada para ler o orÃ§amento.');
+      cruzamentoRenderExcesso();
+      return;
+    }
+
+    cruzamentoState.excesso.fileName = file.name;
+    cruzamentoState.excesso.filial = cruzamentoState.excesso.filial || 'OrÃ§amento PDF';
+    cruzamentoState.excesso.headers = ['CODIGO', 'DESCRICAO', 'QUANTIDADE'];
+    cruzamentoState.excesso.rows = [];
+    cruzamentoState.excesso.items = [];
+    cruzamentoState.excesso.valid = false;
+    cruzamentoState.excesso.message = 'Lendo orÃ§amento PDF...';
+    cruzamentoState.status = 'excesso-lendo';
+    cruzamentoClearResultados();
+    cruzamentoRenderExcesso();
+    cruzamentoRenderTabela();
+    cruzamentoRenderMainStatus();
+
+    reader = new FileReader();
+    reader.onload = function (evt) {
+      cruzamentoReadPdfLines(pdfjs, new Uint8Array(evt.target.result)).then(function (lines) {
+        var items = cruzamentoParseOrcamentoPdfLines(lines);
+        cruzamentoState.excesso.fileName = file.name;
+        cruzamentoState.excesso.origemTipo = 'pdf';
+        cruzamentoState.excesso.headers = ['CODIGO', 'DESCRICAO', 'QUANTIDADE'];
+        cruzamentoState.excesso.rows = lines;
+        cruzamentoState.excesso.items = items;
+        cruzamentoState.excesso.valid = items.length > 0;
+        cruzamentoState.excesso.message = items.length > 0
+          ? 'OrÃ§amento PDF validado. ' + items.length + ' itens considerados para cruzamento.'
+          : CRUZAMENTO_ORCAMENTO_INVALID_MESSAGE;
+        cruzamentoState.status = items.length > 0 ? 'excesso-ok' : 'excesso-invalido';
+        cruzamentoRenderExcesso();
+        cruzamentoRenderMainStatus();
+        cruzamentoRenderAcoes();
+      }).catch(function () {
+        cruzamentoSetExcessoError(file.name, 'Falha ao ler o texto do orÃ§amento PDF.');
+        cruzamentoState.excesso.origemTipo = 'pdf';
+        cruzamentoRenderExcesso();
+      });
+    };
+    reader.onerror = function () {
+      cruzamentoSetExcessoError(file.name, 'Falha ao abrir o PDF selecionado.');
+      cruzamentoState.excesso.origemTipo = 'pdf';
+      cruzamentoRenderExcesso();
+    };
+    reader.readAsArrayBuffer(file);
+  }
   function cruzamentoReadRupturaFile(file) {
     var XLSX = cruzamentoGetXLSX();
     var reader;
@@ -963,18 +1194,26 @@
     var sugerida = 0;
     var valorTransferencia = null;
 
-    if (excessoQtd === null) {
+    if (excesso.origemTipo === 'pdf') {
+      if (excessoQtd === null || excessoQtd <= 0) {
+        sugerida = 0;
+        observacoes.push('SugestÃ£o zerada sem quantidade vÃ¡lida no orÃ§amento PDF');
+      } else {
+        sugerida = cruzamentoRoundQty(Math.max(0, excessoQtd));
+        observacoes.push('SugestÃ£o informada no orÃ§amento PDF');
+      }
+    } else if (excessoQtd === null) {
       sugerida = 0;
-      observacoes.push('Sugestão zerada sem EXCESSO válido');
+      observacoes.push('SugestÃ£o zerada sem EXCESSO vÃ¡lido');
     } else if (mediaDiaExcesso === null) {
       sugerida = 0;
-      observacoes.push('Sugestão zerada sem MÉDIA DIA EXCESSO válida');
+      observacoes.push('SugestÃ£o zerada sem MÃ‰DIA DIA EXCESSO vÃ¡lida');
     } else if (excessoQtd <= 0) {
       sugerida = 0;
       observacoes.push('Sem excesso disponivel');
     } else {
       sugerida = cruzamentoRoundQty(Math.max(0, excessoQtd * mediaDiaExcesso));
-      observacoes.push('Sugestão por EXCESSO x MÉDIA DIA');
+      observacoes.push('SugestÃ£o por EXCESSO x MÃ‰DIA DIA');
     }
 
     if (custo !== null && custo > 0) {
@@ -992,7 +1231,7 @@
     return {
       codigo: excesso.codigo,
       descricao: excesso.descricao || ruptura.descricao,
-      filialOrigem: cruzamentoState.excesso.filial || '-',
+      filialOrigem: cruzamentoState.excesso.filial || (excesso.origemTipo === 'pdf' ? 'OrÃ§amento PDF' : '-'),
       filialDestino: cruzamentoState.ruptura.filial || '-',
       classeGeral: excesso.classeGeral || ruptura.classeGeral,
       classeExcesso: excesso.classeFilialExcesso,
@@ -1213,13 +1452,64 @@
     cruzamentoRenderEditResumo();
   }
 
+  function cruzamentoRenderOrigemTipo() {
+    var isPdf = cruzamentoState.excesso.origemTipo === 'pdf';
+    var excelRadio = document.getElementById('cruzamento-fonte-excel');
+    var pdfRadio = document.getElementById('cruzamento-fonte-pdf');
+    var excelArea = document.getElementById('cruzamento-excesso-excel-area');
+    var pdfArea = document.getElementById('cruzamento-orcamento-pdf-area');
+    if (excelRadio) excelRadio.checked = !isPdf;
+    if (pdfRadio) pdfRadio.checked = isPdf;
+    cruzamentoSetVisible(excelArea, !isPdf);
+    cruzamentoSetVisible(pdfArea, isPdf);
+  }
+
+  function cruzamentoResetOrigemAtual(tipo) {
+    cruzamentoState.excesso.fileName = '';
+    cruzamentoState.excesso.headers = [];
+    cruzamentoState.excesso.rows = [];
+    cruzamentoState.excesso.items = [];
+    cruzamentoState.excesso.valid = false;
+    cruzamentoState.excesso.origemTipo = tipo;
+    cruzamentoState.excesso.message = tipo === 'pdf' ? 'Aguardando orÃ§amento PDF.' : 'Aguardando arquivo de excesso.';
+    cruzamentoState.status = 'inicial';
+    cruzamentoClearResultados();
+    cruzamentoRenderExcesso();
+    cruzamentoRenderTabela();
+    cruzamentoRenderMainStatus();
+    cruzamentoRenderAcoes();
+  }
+
+  function cruzamentoSetOrigemTipo(tipo) {
+    var next = tipo === 'pdf' ? 'pdf' : 'excel';
+    if (cruzamentoState.excesso.origemTipo === next) {
+      cruzamentoRenderOrigemTipo();
+      return;
+    }
+    cruzamentoResetOrigemAtual(next);
+  }
+
   function cruzamentoBindExcessoImport() {
     var input = document.getElementById('cruzamento-excesso-input');
+    var pdfInput = document.getElementById('cruzamento-orcamento-input');
+    var excelRadio = document.getElementById('cruzamento-fonte-excel');
+    var pdfRadio = document.getElementById('cruzamento-fonte-pdf');
     var filial = document.getElementById('cruzamento-excesso-filial');
+
+    if (excelRadio) excelRadio.addEventListener('change', function () { if (excelRadio.checked) cruzamentoSetOrigemTipo('excel'); });
+    if (pdfRadio) pdfRadio.addEventListener('change', function () { if (pdfRadio.checked) cruzamentoSetOrigemTipo('pdf'); });
 
     if (input) {
       input.addEventListener('change', function () {
+        cruzamentoState.excesso.origemTipo = 'excel';
         cruzamentoReadExcessoFile(input.files && input.files[0]);
+      });
+    }
+
+    if (pdfInput) {
+      pdfInput.addEventListener('change', function () {
+        cruzamentoState.excesso.origemTipo = 'pdf';
+        cruzamentoReadOrcamentoPdfFile(pdfInput.files && pdfInput.files[0]);
       });
     }
 
@@ -1594,6 +1884,7 @@
     cruzamentoState.excesso = {
       fileName: '',
       filial: '',
+      origemTipo: 'excel',
       headers: [],
       rows: [],
       items: [],
@@ -1639,6 +1930,7 @@
   function cruzamentoClearFileInputs() {
     var ids = [
       'cruzamento-excesso-input',
+      'cruzamento-orcamento-input',
       'cruzamento-ruptura-input',
       'cruzamento-excesso-filial',
       'cruzamento-ruptura-filial'
